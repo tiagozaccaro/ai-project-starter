@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+{% if .GenerateAPI%}
+    "{% .ProjectName%}-api": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "app.mcp_server"],
+      "cwd": "{% .APIDir%}",
+      "env": {}
+    }
+{% end%}
+{% if and .GenerateAPI .GenerateWeb%}    ,
+{% end%}{% if .GenerateWeb%}
+    "{% .ProjectName%}-web": {
+      "command": "pnpm",
+      "args": ["exec", "next", "dev"],
+      "cwd": "{% .WebDir%}",
+      "env": {}
+    }
+{% end%}
+  }
+}

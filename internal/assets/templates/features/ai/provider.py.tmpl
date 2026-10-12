@@ -1,0 +1,77 @@
+"""AI provider abstraction for {% .ProjectName%}.
+
+Defines a common interface so providers can be swapped
+without changing calling code (FR-019).
+"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass
+class CompletionRequest:
+    """A text completion request."""
+
+    prompt: str
+    model: str = "gpt-4o-mini"
+    max_tokens: int = 256
+    temperature: float = 0.7
+
+
+@dataclass
+class CompletionResponse:
+    """A text completion response."""
+
+    text: str
+    model: str
+    provider: str
+
+
+class AIProvider(ABC):
+    """Abstract base class for AI providers."""
+
+    @abstractmethod
+    async def complete(self, request: CompletionRequest) -> CompletionResponse:
+        """Generate a completion for the request."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the provider name."""
+
+
+class OpenAIProvider(AIProvider):
+    """OpenAI-compatible provider."""
+
+    @property
+    def name(self) -> str:
+        """Return the provider name."""
+        return "openai"
+
+    async def complete(self, request: CompletionRequest) -> CompletionResponse:
+        """Generate a completion using the OpenAI API."""
+        from openai import AsyncOpenAI
+
+        from app.core.config import get_settings
+
+        client = AsyncOpenAI(api_key=get_settings().openai_api_key)
+        result = await client.chat.completions.create(
+            model=request.model,
+            messages=[{"role": "user", "content": request.prompt}],
+            max_tokens=request.max_tokens,
+            temperature=request.temperature,
+        )
+        choice = result.choices[0]
+        text = choice.message.content or ""
+        return CompletionResponse(text=text, model=request.model, provider=self.name)
+
+
+_PROVIDERS: dict[str, type[AIProvider]] = {
+    "openai": OpenAIProvider,
+}
+
+
+def get_provider(name: str = "openai") -> AIProvider:
+    """Return a provider instance by name."""
+    cls = _PROVIDERS.get(name, OpenAIProvider)
+    return cls()

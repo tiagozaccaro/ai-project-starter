@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Lockfile generation workflow for {% .ProjectName%}.
+# Run once after generation to produce committed lockfiles.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+{% if .GenerateWeb%}
+echo "==> Generating pnpm-lock.yaml ({% .WebDir%})"
+(
+  cd {% .WebDir%}
+  pnpm install --lockfile-only
+)
+{% end%}
+{% if .GenerateAPI%}
+echo "==> Generating uv.lock ({% .APIDir%})"
+(
+  cd {% .APIDir%}
+  uv lock
+)
+{% end%}
+{% if .GenerateMobile%}
+echo "==> Generating pubspec.lock ({% .MobileDir%})"
+(
+  cd {% .MobileDir%}
+  flutter pub get
+)
+{% end%}
+
+echo "Lockfiles generated. Commit them to the repository."

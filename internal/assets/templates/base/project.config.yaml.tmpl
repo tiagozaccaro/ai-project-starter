@@ -1,0 +1,34 @@
+{
+  "schemaVersion": {% .SchemaVersion%},
+  "generatorVersion": "{% .GeneratorVersion%}",
+  "profile": "{% .Profile%}",
+  "projectName": "{% .ProjectName%}",
+  "destination": "{% .Destination%}",
+  "layout": "{% if .FlatLayout%}flat{% else%}monorepo{% end%}",
+  "applications": {
+    "web": {% .Applications.Web%},
+    "api": {% .Applications.API%},
+    "mobile": {% .Applications.Mobile%}
+  },
+  "database": {
+    "type": "{% .Database.Type%}",
+    "architecture": "{% .Database.Architecture%}"
+  },
+  "features": {
+    "auth": {% if .GenerateAuth%}["{% .AuthProvider%}"]{% else%}[]{% end%},
+    "database.migrations": {% .MigrationsEnabled%},
+    "dashboard": {% .GenerateDashboard%},
+    "login": {% .GenerateLogin%},
+    "charts": {% .GenerateCharts%},
+    "graphs": {% .GenerateGraphs%},
+    "ai": {% .GenerateAI%},
+    "workers": {% .GenerateWorkers%},
+    "observability": {% .GenerateObservability%},
+    "docker": {% .GenerateDocker%},
+    "vscode": {% .GenerateVSCode%},
+    "github": {% .GenerateGitHub%},
+    "speckit": {% .GenerateSpeckit%},
+    "mcp": {% .GenerateMCP%},
+    "testing": {% .TestingEnabled%}
+  }
+}

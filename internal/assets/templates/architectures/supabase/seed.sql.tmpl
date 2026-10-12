@@ -1,0 +1,6 @@
+-- Seed data for {% .ProjectName%}
+-- Run with: supabase db seed
+
+insert into public.users (id, email)
+values (gen_random_uuid(), 'admin@example.com')
+on conflict (email) do nothing;

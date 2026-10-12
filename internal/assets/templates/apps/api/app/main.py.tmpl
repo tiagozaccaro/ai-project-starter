@@ -1,0 +1,49 @@
+"""FastAPI application entry point for {% .ProjectName%}."""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+{% if .GenerateAuth%}from app.api.v1.auth import router as auth_router
+{% end%}from app.api.v1.health import router as health_router
+from app.core.config import get_settings
+from app.core.logging import setup_logging
+
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifecycle."""
+    setup_logging(debug=settings.app_debug)
+    from app.database import init_db
+
+    await init_db()
+    yield
+
+
+app = FastAPI(
+    title="{% .ProjectName%}",
+    description="{% if .Metadata%}{% if .Metadata.Description%}{% .Metadata.Description%}{% else%}FastAPI backend for {% .ProjectName%}{% end%}{% else%}FastAPI backend for {% .ProjectName%}{% end%}",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(health_router, prefix="/api/v1", tags=["health"])
+{% if .GenerateAuth%}app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+{% end%}
+
+
+@app.get("/")
+async def root() -> dict[str, str]:
+    """Return basic application info."""
+    return {"app": "{% .ProjectName%}", "status": "ok"}

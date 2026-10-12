@@ -1,0 +1,60 @@
+"""Security helpers for {% .ProjectName%}.
+
+Provider: {% .AuthProvider%}.
+"""
+{% if eq .AuthProvider "google-oidc"%}
+import secrets
+
+from authlib.integrations.starlette_client import OAuth
+from starlette.config import Config
+
+config = Config(".env")
+oauth = OAuth(config)
+
+oauth.register(  # pyright: ignore[reportUnknownMemberType]
+    name="google",
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
+
+
+def generate_state() -> str:
+    """Generate a cryptographically random OAuth state token."""
+    return secrets.token_urlsafe(32)
+{% else if eq .AuthProvider "supabase"%}
+import hashlib
+import hmac
+
+from jose import jwt as jose_jwt
+
+from app.core.config import get_settings
+
+
+def verify_supabase_jwt(token: str) -> bool:
+    """Verify a Supabase-issued JWT signature.
+
+    Self-hosted Supabase signs access tokens with the project
+    JWT secret (HS256). Hosted Supabase uses RS256 with a JWKS
+    endpoint; in that case configure the key via environment and
+    use the jwks verification path.
+    """
+    settings = get_settings()
+    secret = settings.supabase_anon_key or settings.supabase_service_role_key
+    if not token or not secret:
+        return False
+    try:
+        jose_jwt.decode(token, secret, algorithms=["HS256"])
+        return True
+    except jose_jwt.JWTError:
+        return False
+
+
+def hash_token(token: str) -> str:
+    """Return a non-reversible hash of a token for safe logging."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def constant_time_compare(a: str, b: str) -> bool:
+    """Compare two strings in constant time."""
+    return hmac.compare_digest(a, b)
+{% end%}

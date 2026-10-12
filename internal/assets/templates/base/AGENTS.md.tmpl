@@ -1,0 +1,36 @@
+# AGENTS.md — {% .ProjectName%}
+
+This file provides instructions for AI coding agents working on this repository.
+
+## Architectural Invariants
+
+- **Configuration is the source of truth.** `project.config.yaml` defines the enabled
+  applications, database, and features. Do not introduce dependencies or modules that
+  are not enabled in the configuration.
+- **Applications are independent.** {% if .FlatLayout%}The single application lives at the project root.{% else%}`apps/web` (Next.js) and `apps/api` (FastAPI) build and test independently. Do not create cross-application runtime dependencies.{% end%}
+- **Type safety.** TypeScript uses `strict` mode with `noUncheckedIndexedAccess`; Python
+  is type-annotated and passes `pyright` in strict mode.
+
+## Security Boundaries
+
+- Never commit secrets, tokens, or `.env` files. `.env*`, `*.pem`, `*.key`, and
+  `secrets.*` are gitignored.
+- Use least-privilege OAuth scopes. Do not add scopes without a documented need.
+- Require explicit authorization for destructive operations, production access, and
+  force-pushes.
+
+## Testing Requirements
+
+- All changes must include or update tests. Do not skip or suppress failing tests.
+- Web: `pnpm test` (Jest). API: `uv run pytest` (pytest with coverage).
+
+## Dependency Policy
+
+- Do not add dependencies without justification. Prefer free/open-source components.
+- Lockfiles (`pnpm-lock.yaml`, `uv.lock`) are committed. Run `./scripts/generate-lockfiles.sh`
+  after changing dependencies.
+
+## Change Control
+
+- Do not silently change architecture, disable tests, or fabricate results.
+- Substantial changes require a spec, plan, and task list under `.specify/`.

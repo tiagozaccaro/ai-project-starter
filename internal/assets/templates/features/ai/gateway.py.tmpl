@@ -1,0 +1,41 @@
+"""AI gateway router for {% .ProjectName%}."""
+
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
+
+from app.ai.provider import CompletionRequest, get_provider
+
+router = APIRouter()
+
+
+class CompletionPayload(BaseModel):
+    """Request body for completions."""
+
+    prompt: str = Field(..., min_length=1)
+    model: str = "gpt-4o-mini"
+    max_tokens: int = 256
+    temperature: float = 0.7
+
+
+class CompletionResult(BaseModel):
+    """Response body for completions."""
+
+    text: str
+    model: str
+    provider: str
+
+
+@router.post("/completions", response_model=CompletionResult)
+async def create_completion(payload: CompletionPayload) -> CompletionResult:
+    """Generate a completion via the configured AI provider."""
+    provider = get_provider("openai")
+    request = CompletionRequest(
+        prompt=payload.prompt,
+        model=payload.model,
+        max_tokens=payload.max_tokens,
+        temperature=payload.temperature,
+    )
+    result = await provider.complete(request)
+    return CompletionResult(
+        text=result.text, model=result.model, provider=result.provider
+    )

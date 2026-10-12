@@ -1,0 +1,59 @@
+"use client";
+
+import { useCallback } from "react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  type Connection,
+  type Edge,
+  type Node,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
+interface NodeGraphProps {
+  initialNodes?: Node[];
+  initialEdges?: Edge[];
+}
+
+const defaultNodes: Node[] = [
+  { id: "1", position: { x: 0, y: 0 }, data: { label: "Start" } },
+  { id: "2", position: { x: 200, y: 100 }, data: { label: "Step" } },
+];
+
+const defaultEdges: Edge[] = [{ id: "e1-2", source: "1", target: "2" }];
+
+export function NodeGraph({
+  initialNodes = defaultNodes,
+  initialEdges = defaultEdges,
+}: NodeGraphProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((eds) => addEdge(connection, eds));
+    },
+    [setEdges],
+  );
+
+  return (
+    <div className="h-[400px] w-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
+    </div>
+  );
+}

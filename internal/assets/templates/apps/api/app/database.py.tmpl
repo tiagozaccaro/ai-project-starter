@@ -1,0 +1,71 @@
+"""Database engine and session management for {% .ProjectName%}.
+
+Relational databases (postgresql, sqlite, mysql) use async SQLAlchemy.
+MongoDB uses Motor + Beanie. With database.type=none this module is a
+no-op stub.
+"""
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.config import get_settings
+
+{% if ne .Database.Type "mongodb"%}_engine = create_async_engine(
+    get_settings().database_url,
+    echo=False,
+    future=True,
+)
+_session_factory = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Yield an async database session."""
+    async with _session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+
+async def init_db() -> None:
+    """Initialize the database (create tables in non-production)."""
+    import sys
+
+    from app.models.base import Base
+
+    if "pytest" in sys.modules:
+        return
+    async with _engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+{% else%}
+# MongoDB uses Motor + Beanie; see app/models for document models.
+from motor.motor_asyncio import AsyncIOMotorClient
+
+_client: AsyncIOMotorClient | None = None
+
+
+def get_mongo_client() -> AsyncIOMotorClient:
+    """Return the shared Motor client."""
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(get_settings().database_url)
+    return _client
+
+
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[None, None]:
+    """MongoDB does not use SQLAlchemy sessions; yield nothing."""
+    yield None
+
+
+async def init_db() -> None:
+    """Initialize MongoDB indexes (no-op at startup)."""
+    return None
+{% end%}

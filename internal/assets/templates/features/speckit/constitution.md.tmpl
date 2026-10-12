@@ -1,0 +1,31 @@
+# {% .ProjectName%} Constitution
+
+## Core Principles
+
+### I. Configuration-Driven Generation
+A single validated `project.config.yaml` is the source of truth. The generator must never produce unused dependencies or modules.
+
+### II. Standalone Generated Projects
+Every generated project must work independently of the generator.
+
+### III. AI-First Development
+Provide a root `AGENTS.md` and scoped instructions. Agents must not silently change architecture or suppress failing tests.
+
+### IV. Type Safety and Quality
+TypeScript strict mode; Python type annotations, Ruff, Pyright, pytest.
+
+### V. Free and Open-Source First
+Prefer free, open-source components.
+
+### VI. Security by Default
+Never commit secrets. Use least-privilege OAuth scopes. Run containers as non-root.
+
+### VII. Incremental Implementation
+Use specifications, plans, and tasks for substantial changes.
+
+### VIII. Reproducibility and Maintainability
+Pin dependencies through supported lockfiles.
+
+## Governance
+
+This constitution supersedes all other practices. Amendments require a written proposal, approval, and a migration plan.
