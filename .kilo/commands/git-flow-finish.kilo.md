@@ -24,6 +24,7 @@ gh pr merge <pr-number> --squash --delete-branch
 ```bash
 git checkout main
 git pull
+git fetch --prune
 ```
 
 ## PR Title Format
@@ -49,7 +50,7 @@ How to verify the changes
 ```bash
 gh pr create --title "feat: add user authentication module" --body "## Summary\nImplements JWT-based auth with refresh tokens\n\n## Changes\n- Added auth middleware\n- Added login/register endpoints\n- Added token refresh\n\n## Testing\nRun `npm test` and verify auth flow" --base main
 gh pr merge 212 --squash --delete-branch
-git checkout main && git pull
+git checkout main && git pull && git fetch --prune
 ```
 
 ## Important Notes

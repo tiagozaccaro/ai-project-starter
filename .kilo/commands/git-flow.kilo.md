@@ -45,6 +45,7 @@ gh pr merge <pr-number> --squash --delete-branch
 ```bash
 git checkout main
 git pull
+git fetch --prune
 ```
 
 ## Branch Naming Convention
