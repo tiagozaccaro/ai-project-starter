@@ -2,4 +2,7 @@ installed:
 - github
 settings:
   auto_execute_hooks: true
-hooks: {}
+hooks:
+  post_specify:
+    - command: git checkout -b "{{SPECIFY_FEATURE}}"
+      description: "Create git branch for new spec"
