@@ -1,0 +1,23 @@
+# ADR 0001: Initial Architecture
+
+**Status**: Accepted
+**Date**: {% .GeneratorVersion%}
+
+## Context
+
+{% .ProjectName%} is a {% if and .GenerateWeb .GenerateAPI%}fullstack application with a Next.js web frontend and a FastAPI backend{% else if .GenerateWeb%}Next.js web application{% else if .GenerateAPI%}FastAPI backend application{% end%}]. The project uses a monorepo layout with independently buildable applications under `apps/`.
+
+## Decision
+
+- **Monorepo layout**: Each application lives under `apps/<name>` and builds independently.
+- **Configuration-driven**: `project.config.yaml` is the single source of truth for enabled
+  features. Only explicitly enabled features produce files and dependencies.
+- **Type safety**: TypeScript strict mode for the web app; Python type annotations with
+  pyright strict mode for the API.
+- **Database**: {% .Database.Type%} via the {% .Database.Architecture%} architecture.
+
+## Consequences
+
+- Applications can be built, tested, and deployed independently.
+- The generator produces deterministic output from the configuration.
+- Adding a feature requires enabling it in `project.config.yaml` and regenerating.

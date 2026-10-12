@@ -1,0 +1,23 @@
+"""Test fixtures for {% .ProjectName%} API."""
+
+import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Use the asyncio backend."""
+    return "asyncio"
+
+
+@pytest_asyncio.fixture
+async def client() -> AsyncClient:
+    """Return an async test client for the application."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac

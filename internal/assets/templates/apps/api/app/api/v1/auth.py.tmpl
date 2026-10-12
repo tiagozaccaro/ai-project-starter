@@ -1,0 +1,33 @@
+"""Authentication router for {% .ProjectName%}.
+
+Provider: {% .AuthProvider%}.
+{% if eq .AuthProvider "google-oidc"%}
+FastAPI-managed Google OIDC: the backend exchanges the authorization
+code, issues a session, and sets an HTTP-only cookie.
+{% else if eq .AuthProvider "supabase"%}
+Supabase-managed auth: the backend validates Supabase-issued JWTs.
+{% end%}
+"""
+
+from fastapi import APIRouter, Request, Response
+
+router = APIRouter()
+
+
+@router.post("/{provider}/login")
+async def login(provider: str, response: Response, request: Request) -> dict[str, str]:
+    """Initiate an OAuth login with the given provider."""
+    return {"provider": provider, "status": "initiated"}
+
+
+@router.post("/logout")
+async def logout(response: Response) -> dict[str, str]:
+    """End the current session."""
+    response.delete_cookie("session")
+    return {"status": "logged-out"}
+
+
+@router.get("/me")
+async def me(request: Request) -> dict[str, str]:
+    """Return the authenticated user profile."""
+    return {"id": "anonymous", "email": "anonymous@example.com"}

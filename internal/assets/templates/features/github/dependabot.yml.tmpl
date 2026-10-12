@@ -1,0 +1,22 @@
+version: 2
+updates:
+{% if .GenerateWeb%}
+  - package-ecosystem: pnpm
+    directory: {% if .FlatLayout%}/{% else%}/apps/web{% end%}
+    schedule:
+      interval: weekly
+    groups:
+      web-dependencies:
+        patterns: ["*"]
+{% end%}{% if .GenerateAPI%}
+  - package-ecosystem: pip
+    directory: {% if .FlatLayout%}/{% else%}/apps/api{% end%}
+    schedule:
+      interval: weekly
+      open-pull-requests-limit: 10
+{% end%}{% if .GenerateMobile%}
+  - package-ecosystem: pip
+    directory: {% if .FlatLayout%}/{% else%}/apps/mobile{% end%}
+    schedule:
+      interval: weekly
+{% end%}

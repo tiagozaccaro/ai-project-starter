@@ -86,10 +86,12 @@ When Flutter mobile is enabled, the bottom navigation bar is the primary navigat
 - Drawers never open simultaneously; initial state: both closed.
 - Integration tests verify: back-button pops routes correctly, gesture navigation preserves state, drawer toggle exclusivity.
 
+**Amendment 1.0.1 (2026-10-12)**: Desktop/large-screen adaptive layouts (>600dp) may use permanent `NavigationRail` (left) and permanent right panel instead of control-activated drawers. Mobile behavior (control-activated drawers) is unchanged. This amendment was approved by the project maintainer during `/speckit.analyze` (finding H3). Permanent drawers on large screens are permitted; on mobile, the strict "opened only by controls" rule remains in force.
+
 ## Governance
 
 This constitution supersedes all other practices. Amendments require: (1) a written proposal with rationale, (2) approval by project maintainers, (3) a migration plan for existing generated projects, and (4) version bump in this document.
 
 All PRs and reviews must verify compliance with applicable principles. Complexity must be justified against the simplest working alternative. Use `AGENTS.md` for runtime development guidance.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-12 | **Last Amended**: 2026-10-12
+**Version**: 1.0.1 | **Ratified**: 2026-10-12 | **Last Amended**: 2026-10-12 (Amendment 1.0.1: desktop permanent-drawer exception per user decision during `/speckit.analyze`)

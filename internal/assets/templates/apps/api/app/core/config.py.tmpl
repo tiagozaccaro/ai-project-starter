@@ -1,0 +1,51 @@
+"""Application settings loaded from environment variables."""
+
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Runtime settings for the {% .ProjectName%} API."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    app_name: str = "{% .ProjectName%}"
+    app_env: str = "development"
+    app_debug: bool = False
+    secret_key: str = "change-me-in-production"
+
+    database_url: str = "sqlite+aiosqlite:///:memory:"
+
+    # Authentication
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    oauth_callback_url: str = "http://localhost:8000/auth/google/callback"
+    token_encryption_key: str = ""
+
+    # Supabase
+    supabase_url: str = ""
+    supabase_anon_key: str = ""
+    supabase_service_role_key: str = ""
+
+    # AI
+    openai_api_key: str = ""
+
+    # Observability
+    sentry_dsn: str = ""
+    otel_exporter_otlp_endpoint: str = ""
+
+    @property
+    def is_production(self) -> bool:
+        """Return True when running in production."""
+        return self.app_env == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Return cached application settings."""
+    return Settings()

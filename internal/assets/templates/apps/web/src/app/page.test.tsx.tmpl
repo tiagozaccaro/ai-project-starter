@@ -1,0 +1,11 @@
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import HomePage from "./page";
+
+describe("HomePage", () => {
+  it("renders the project name heading", () => {
+    render(<HomePage />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toBeInTheDocument();
+  });
+});

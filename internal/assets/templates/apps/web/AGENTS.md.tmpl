@@ -1,0 +1,27 @@
+# web (Next.js) — {% .ProjectName%}
+
+AI agent instructions for the Next.js web application.
+
+## Stack
+
+- Next.js 14 (App Router), React 18, TypeScript (strict, noUncheckedIndexedAccess)
+- Tailwind CSS + shadcn/ui components
+- Jest + Testing Library
+
+## Rules
+
+- TypeScript strict mode: no `any` without `// @ts-expect-error` + justification.
+- Use the generated API client in `src/lib/api.ts`; do not hand-roll fetch calls.
+- Components live in `src/components`; app routes in `src/app`.
+- All changes require tests (`pnpm test`).
+
+## Commands
+
+```bash
+pnpm install
+pnpm dev        # development server
+pnpm build      # production build
+pnpm typecheck  # tsc --noEmit
+pnpm lint       # ESLint
+pnpm test       # Jest
+```

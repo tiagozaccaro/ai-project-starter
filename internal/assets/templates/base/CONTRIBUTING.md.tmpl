@@ -1,0 +1,35 @@
+# Contributing to {% .ProjectName%}
+
+Thank you for your interest in contributing!
+
+## Development Setup
+
+```bash
+# Generate lockfiles first
+./scripts/generate-lockfiles.sh
+
+# Web
+cd {% .WebDir%} && pnpm install
+
+# API
+cd {% .APIDir%} && uv sync
+```
+
+## Workflow
+
+1. Create a feature branch from `main`.
+2. Make changes with tests.
+3. Run lint, typecheck, and tests locally.
+4. Open a pull request using the provided template.
+
+## Code Style
+
+- **Web**: ESLint + Prettier. Run `pnpm lint` and `pnpm format`.
+- **API**: Ruff. Run `uv run ruff check` and `uv run ruff format`.
+
+## Testing
+
+- Web: `pnpm test`
+- API: `uv run pytest`
+
+All tests must pass before merge.

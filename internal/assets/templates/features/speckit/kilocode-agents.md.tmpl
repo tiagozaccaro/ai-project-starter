@@ -1,0 +1,23 @@
+# Kilo Code Agent Rules — {% .ProjectName%}
+
+## Project Overview
+
+{% .ProjectName%} is a {% if and .GenerateWeb .GenerateAPI%}fullstack application (Next.js + FastAPI){% else if .GenerateWeb%}Next.js web application{% else if .GenerateAPI%}FastAPI backend{% end%}.
+
+## Rules
+
+1. **Configuration is truth.** Only implement features enabled in `project.config.yaml`.
+2. **Do not add dependencies** without explicit instruction.
+3. **Never skip or suppress failing tests.**
+4. **Type safety is mandatory.** No `any` without `// @ts-expect-error` + justification.
+5. **Do not commit secrets.** `.env*`, `*.pem`, `*.key`, `secrets.*` are forbidden.
+6. **Substantial changes** require a spec, plan, and task list under `.specify/`.
+
+## Commands
+
+{% if .GenerateWeb%}
+- Web: `cd {% .WebDir%} && pnpm install && pnpm dev`
+{% end%}
+{% if .GenerateAPI%}
+- API: `cd {% .APIDir%} && uv sync && uv run uvicorn app.main:app --reload`
+{% end%}

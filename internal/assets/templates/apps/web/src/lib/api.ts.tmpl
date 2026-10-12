@@ -1,0 +1,68 @@
+// Generated API client for {% .ProjectName%}.
+// Pre-baked from the FastAPI endpoint contract (research.md §8).
+// Extend with additional endpoints as the backend grows.
+
+const BASE_URL =
+  (typeof process !== "undefined" &&
+    process.env?.NEXT_PUBLIC_API_URL) ||
+  "http://localhost:8000";
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new ApiError(res.status, body || res.statusText);
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return (await res.json()) as T;
+}
+
+export interface HealthStatus {
+  status: string;
+  version: string;
+}
+
+export const healthApi = {
+  get(): Promise<HealthStatus> {
+    return request<HealthStatus>("/api/v1/health");
+  },
+};
+
+{% if .GenerateAuth%}
+export interface LoginResponse {
+  accessToken: string;
+  tokenType: string;
+}
+
+export const authApi = {
+  login(provider: string): Promise<LoginResponse> {
+    return request<LoginResponse>(`/api/v1/auth/${provider}/login`, {
+      method: "POST",
+    });
+  },
+  logout(): Promise<void> {
+    return request<void>("/api/v1/auth/logout", { method: "POST" });
+  },
+  me(): Promise<{ id: string; email: string }> {
+    return request<{ id: string; email: string }>("/api/v1/auth/me");
+  },
+};
+{% end%}

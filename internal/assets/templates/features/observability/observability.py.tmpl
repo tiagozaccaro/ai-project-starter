@@ -1,0 +1,42 @@
+"""Observability setup for {% .ProjectName%}.
+
+Configures OpenTelemetry tracing and Sentry error reporting
+when the corresponding environment variables are set.
+"""
+
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+
+def setup_observability() -> None:
+    """Initialize tracing and error reporting."""
+    dsn = os.getenv("SENTRY_DSN", "")
+    otlp = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+
+    if dsn:
+        try:
+            import sentry_sdk
+
+            sentry_sdk.init(dsn=dsn, traces_sample_rate=0.1)
+            logger.info("Sentry initialized")
+        except ImportError:
+            logger.warning("sentry-sdk not installed; skipping Sentry")
+
+    if otlp:
+        try:
+            from opentelemetry import trace
+            from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import BatchSpanProcessor
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter,
+            )
+
+            provider = TracerProvider(resource=Resource.create({"service.name": "{% .ProjectName%}" }))
+            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp)))
+            trace.set_tracer_provider(provider)
+            logger.info("OpenTelemetry initialized")
+        except ImportError:
+            logger.warning("OpenTelemetry packages not installed; skipping tracing")
