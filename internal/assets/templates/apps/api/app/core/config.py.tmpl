@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
 
     database_url: str = "sqlite+aiosqlite:///:memory:"
+    database_name: str = "app"
+
+    # Session (HTTP-only cookie)
+    session_secret: str = "change-me-in-production"
+    session_max_age: int = 86400
 
     # Authentication
     google_client_id: str = ""

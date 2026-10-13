@@ -1,0 +1,21 @@
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: fullstack
+projectName: "golden-fullstack"
+applications:
+  web: true
+  api: true
+  mobile: false
+database:
+  type: postgresql
+  architecture: fastapi
+features:
+  auth:
+    - google-oidc
+  database.migrations: true
+  dashboard: true
+  login: true
+  testing: true
+  github: true
+  vscode: true
+  speckit: true

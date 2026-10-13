@@ -1,25 +1,10 @@
 """User model for {% .ProjectName%}.
 
-{% if eq .Database.Type "mongodb"%}MongoDB document (Beanie).{% else%}Relational model (SQLAlchemy).{% end%}
+Relational model (SQLAlchemy). The MongoDB variant
+(Beanie document) lives in databases/mongodb/models/user.py
+and is selected by the template catalog.
 """
 
-{% if eq .Database.Type "mongodb"%}
-from beanie import Document
-from pydantic import Field
-
-
-class User(Document):
-    """MongoDB user document."""
-
-    email: str = Field(..., index=True, unique=True)
-    hashed_password: str = ""
-    is_active: bool = True
-
-    class Settings:
-        """Beanie collection settings."""
-
-        name = "users"
-{% else%}
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String, func
@@ -29,7 +14,7 @@ from app.models.base import Base
 
 
 class User(Base):
-    """Application user."""
+    """User model."""
 
     __tablename__ = "users"
 
@@ -40,4 +25,3 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
-{% end%}

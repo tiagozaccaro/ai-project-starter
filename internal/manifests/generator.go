@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/your-org/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 )
 
 // DependencySet is the computed set of dependencies for
@@ -90,7 +90,7 @@ func (g *Generator) APIDependencies(rc *dependencies.ResolvedConfig) DependencyS
 	}
 	if rc.GenerateAuth {
 		if rc.AuthProvider == "google-oidc" {
-			ds.Runtime = append(ds.Runtime, "authlib", "python-jose[cryptography]")
+			ds.Runtime = append(ds.Runtime, "authlib", "python-jose[cryptography]", "google-auth", "httpx")
 		} else if rc.AuthProvider == "supabase" {
 			ds.Runtime = append(ds.Runtime, "supabase")
 		}

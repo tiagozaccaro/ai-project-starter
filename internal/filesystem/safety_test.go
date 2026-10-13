@@ -126,3 +126,14 @@ func TestCreateBackupNotDir(t *testing.T) {
 		t.Error("expected error backing up a non-directory")
 	}
 }
+
+func TestCreateBackupNonExistent(t *testing.T) {
+	nonExistent := filepath.Join(t.TempDir(), "does-not-exist")
+	backup, err := CreateBackup(nonExistent)
+	if err == nil {
+		t.Error("expected error for non-existent destination")
+	}
+	if backup != "" {
+		t.Errorf("expected empty backup on error, got %q", backup)
+	}
+}

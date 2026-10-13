@@ -1,0 +1,32 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Supabase Auth client for {% .ProjectName%} (web).
+///
+/// Generated when features.auth includes `supabase`
+/// (plan §5.1, §5.3). Initialize in src/main.tsx with
+/// the URL and anon key from your project's
+/// `.env.local` (see `.env.example`).
+final supabaseClient = Supabase.instance;
+
+/// Initialize the Supabase client. Call once at app startup.
+Future<void> initSupabase() async {
+  await Supabase.initialize(
+    url: const String.fromEnvironment('SUPABASE_URL'),
+    anonKey: const String.fromEnvironment('SUPABASE_ANON_KEY'),
+  );
+}
+
+/// Returns the currently authenticated user, or null.
+User? get currentUser => supabaseClient.auth.currentUser;
+
+/// Signs in with email and magic link (passwordless).
+Future<void> signInWithOtp({required String email}) async {
+  await supabaseClient.auth.signInWithOtp(
+    OtpType.email,
+    email,
+    emailRedirectTo: '${const String.fromEnvironment('APP_URL')}/login',
+  );
+}
+
+/// Signs out the current session.
+Future<void> signOut() => supabaseClient.auth.signOut();

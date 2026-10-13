@@ -1,0 +1,123 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'navigation/adaptive_scaffold.dart';
+import 'navigation/navigation_state.dart';
+
+/// Generated app entry point. Navigation model per Constitution X:
+/// bottom navigation (3-5 destinations), left drawer opened only by
+/// the app-menu control, right drawer opened only by the profile
+/// control, never both simultaneously, both closed on startup.
+/// On screens wider than 600dp, permanent navigation surfaces replace
+/// the drawers (Constitution X, Amendment 1.0.1).
+void main() {
+  runApp(const {% toPascal .ProjectName %}App());
+}
+
+class {% toPascal .ProjectName %}App extends StatelessWidget {
+  const {% toPascal .ProjectName %}App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => NavigationState(),
+      child: MaterialApp.router(
+        title: '{% .ProjectName %}',
+        theme: ThemeData(
+          {% if .Metadata.Mobile.Theme %}
+          {% if .Metadata.Mobile.Theme.PrimaryColor %}
+          colorSchemeSeed: Colors.{% .Metadata.Mobile.Theme.PrimaryColor %},
+          {% else %}
+          colorSchemeSeed: Colors.blue,
+          {% end %}
+          {% if .Metadata.Mobile.Theme.UseMaterial3 %}
+          useMaterial3: {% .Metadata.Mobile.Theme.UseMaterial3 %},
+          {% else %}
+          useMaterial3: true,
+          {% end %}
+          {% else %}
+          colorSchemeSeed: Colors.blue,
+          useMaterial3: true,
+          {% end %}
+        ),
+        routerConfig: router,
+      ),
+    );
+  }
+}
+
+/// App router. Each destination is a StatefulShellBranch so tab
+/// switches preserve per-tab state (navigation rule 6).
+final router = GoRouter(
+  initialLocation: appDestinations.first.route,
+  routes: [
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) => AdaptiveScaffold(
+        title: '{% .ProjectName %}',
+        destinations: appDestinations,
+        leftItems: leftDrawerItems,
+        rightItems: rightDrawerItems,
+        navigationShell: navigationShell,
+      ),
+      branches: [
+        for (final destination in appDestinations)
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: destination.route,
+                name: destination.id,
+                builder: (context, state) =>
+                    DestinationPage(destination: destination),
+              ),
+            ],
+          ),
+      ],
+    ),
+  ],
+);
+
+/// Bottom-navigation destinations from project.config.yaml
+/// (metadata.mobile.destinations). No hardcoded destinations
+/// (navigation rule 10).
+const appDestinations = <Destination>[
+  {% range .Metadata.Mobile.Destinations %}
+  Destination(
+    id: '{% .ID %}',
+    label: '{% .Label %}',
+    icon: Icons.{% .Icon %},
+    route: '{% .Route %}',
+  ),
+  {% end %}
+];
+
+/// Left-drawer (app functionality) items from project.config.yaml.
+const leftDrawerItems = <DrawerItem>[
+  {% range .Metadata.Mobile.LeftDrawerItems %}
+  DrawerItem(id: '{% .ID %}', label: '{% .Label %}', icon: Icons.{% .Icon %}, route: '{% .Route %}'),
+  {% end %}
+];
+
+/// Right-drawer (profile/settings) items from project.config.yaml.
+const rightDrawerItems = <DrawerItem>[
+  {% range .Metadata.Mobile.RightDrawerItems %}
+  DrawerItem(id: '{% .ID %}', label: '{% .Label %}', icon: Icons.{% .Icon %}, route: '{% .Route %}'),
+  {% end %}
+];
+
+/// Placeholder page for a bottom-navigation destination.
+/// Replace with the real screen for this destination.
+class DestinationPage extends StatelessWidget {
+  const DestinationPage({super.key, required this.destination});
+
+  final Destination destination;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Text(destination.label),
+      ),
+    );
+  }
+}

@@ -8,12 +8,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/your-org/ai-project-starter/internal/cli/commands"
-	"github.com/your-org/ai-project-starter/internal/pipeline"
+	"github.com/tiagozaccaro/ai-project-starter/internal/cli/commands"
+	"github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
 )
 
 // Version is the generator version, set at build time.
 var Version = "1.0.0"
+
+// osExit is the function called when the CLI exits. Defaults to os.Exit
+// but can be overridden in tests.
+var OSExit = os.Exit
 
 // NewRootCommand builds the root cobra command with all
 // subcommands registered.
@@ -36,6 +40,8 @@ func NewRootCommand() *cobra.Command {
 	root.AddCommand(commands.NewMigrateConfigCommand())
 	root.AddCommand(commands.NewListProfilesCommand())
 	root.AddCommand(commands.NewListFeaturesCommand())
+	root.AddCommand(commands.NewUpgradeCommand())
+	root.AddCommand(commands.NewCompletionCommand())
 
 	return root
 }
@@ -47,10 +53,11 @@ func Execute() {
 		var cliErr *pipeline.CLIError
 		if ok := asCLIError(err, &cliErr); ok {
 			fmt.Fprintln(os.Stderr, "Error:", cliErr.Message)
-			os.Exit(cliErr.Code)
+			OSExit(cliErr.Code)
+			return
 		}
 		fmt.Fprintln(os.Stderr, "Error:", err)
-		os.Exit(1)
+		OSExit(1)
 	}
 }
 

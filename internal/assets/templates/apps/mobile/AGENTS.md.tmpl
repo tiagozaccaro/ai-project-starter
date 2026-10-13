@@ -1,0 +1,41 @@
+# mobile (Flutter) — {% .ProjectName%}
+
+AI agent instructions for the Flutter mobile app.
+
+## Stack
+
+- Dart 3.5+, Flutter 3.24+
+- go_router (navigation), provider (state)
+- flutter_lints (linting)
+
+## Navigation Rules (Constitution X)
+
+- Bottom navigation shows 3-5 destinations from
+  `metadata.mobile.destinations` — no hardcoded tabs.
+- The left drawer opens ONLY via the app-menu
+  IconButton; the right drawer opens ONLY via the
+  profile CircleAvatar.
+- Drawers are never open simultaneously and are closed
+  on startup.
+- Tab switches preserve per-tab state
+  (StatefulShellRoute.indexedStack).
+- Android back closes an open drawer before leaving.
+- On screens wider than 600dp, permanent navigation
+  surfaces replace the drawers (Amendment 1.0.1).
+
+## Rules
+
+- Dart is fully type-annotated; `flutter analyze`
+  must pass with zero issues.
+- Use `lib/navigation/` for all navigation state; do
+  not add navigation logic to pages.
+- All changes require tests (`flutter test`).
+
+## Commands
+
+```bash
+flutter pub get        # install dependencies
+flutter analyze        # static analysis
+flutter test           # run tests (including navigation rules)
+flutter build apk      # build Android APK
+```

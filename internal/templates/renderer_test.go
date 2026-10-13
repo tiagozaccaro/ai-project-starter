@@ -4,8 +4,10 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/your-org/ai-project-starter/internal/config"
-	"github.com/your-org/ai-project-starter/internal/dependencies"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tiagozaccaro/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 )
 
 func resolvedConfig() *dependencies.ResolvedConfig {
@@ -143,4 +145,79 @@ func TestPlannedFiles(t *testing.T) {
 	if len(paths) != 1 || paths[0] != "out/web.txt" {
 		t.Errorf("expected [out/web.txt], got %v", paths)
 	}
+}
+
+func TestEvaluateTargetPathParseError(t *testing.T) {
+	_, err := EvaluateTargetPath("{% invalid syntax here", resolvedConfig())
+	if err == nil {
+		t.Fatal("expected error for malformed target path")
+	}
+}
+
+func TestEvaluateTargetPathExecError(t *testing.T) {
+	_, err := EvaluateTargetPath("{% .UndefinedField %}", resolvedConfig())
+	if err == nil {
+		t.Fatal("expected error for undefined field in target path")
+	}
+}
+
+func TestRenderAllConditionError(t *testing.T) {
+	fsys := fstest.MapFS{
+		"t.tmpl": &fstest.MapFile{Data: []byte("content")},
+	}
+	manifest := []TemplateManifest{
+		{SourcePath: "t.tmpl", TargetPath: "out.txt", Condition: "{{ if true }}"},
+	}
+	r := &Renderer{FS: fsys}
+	_, err := r.RenderAll(manifest, resolvedConfig())
+	if err == nil {
+		t.Fatal("expected error for unterminated condition")
+	}
+}
+
+func TestRenderAllTargetPathError(t *testing.T) {
+	fsys := fstest.MapFS{
+		"t.tmpl": &fstest.MapFile{Data: []byte("content")},
+	}
+	manifest := []TemplateManifest{
+		{SourcePath: "t.tmpl", TargetPath: "{% undefined %}/out.txt", Condition: ""},
+	}
+	r := &Renderer{FS: fsys}
+	_, err := r.RenderAll(manifest, resolvedConfig())
+	if err == nil {
+		t.Fatal("expected error for malformed target path")
+	}
+}
+
+func TestRenderAllExecError(t *testing.T) {
+	fsys := fstest.MapFS{
+		"t.tmpl": &fstest.MapFile{Data: []byte("{% .MissingField %}")},
+	}
+	manifest := []TemplateManifest{
+		{SourcePath: "t.tmpl", TargetPath: "out.txt", Condition: ""},
+	}
+	r := &Renderer{FS: fsys}
+	_, err := r.RenderAll(manifest, resolvedConfig())
+	if err == nil {
+		t.Fatal("expected error for missing field execution")
+	}
+}
+
+func TestNewRenderer(t *testing.T) {
+	fs := fstest.MapFS{}
+	r := NewRenderer(fs)
+	require.NotNil(t, r)
+	require.Equal(t, fs, r.FS)
+}
+
+func TestCatalog(t *testing.T) {
+	catalog := Catalog()
+	require.NotEmpty(t, catalog)
+	// Should have many templates
+	assert.GreaterOrEqual(t, len(catalog), 10)
+}
+
+func TestAssetsFS(t *testing.T) {
+	fs := AssetsFS()
+	require.NotNil(t, fs)
 }

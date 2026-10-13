@@ -1,0 +1,15 @@
+name: custom
+description: Fully customizable
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: custom
+applications:
+  web: false
+  api: false
+  mobile: false
+database:
+  type: none
+  architecture: fastapi
+features:
+  database.migrations: true
+  testing: true

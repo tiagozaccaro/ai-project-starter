@@ -1,0 +1,38 @@
+"""Google OIDC OAuth2 flow for {% .ProjectName%}.
+
+FastAPI-managed Google OIDC (plan §5.1): the backend
+exchanges the authorization code for tokens, validates
+the ID token, and establishes an encrypted server-side
+session. CSRF protection via the OAuth `state` parameter.
+"""
+
+import secrets
+from urllib.parse import urlencode
+
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+
+from app.core.config import get_settings
+from app.core.security import generate_state
+
+
+def build_authorization_url(request: Request) -> str:
+    """Build the Google authorization URL with a CSRF state token."""
+    settings = get_settings()
+    state = generate_state()
+    request.session["oauth_state"] = state
+    params = {
+        "client_id": settings.google_client_id,
+        "redirect_uri": settings.oauth_callback_url,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent",
+    }
+    return f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+
+
+async def begin_login(request: Request) -> RedirectResponse:
+    """Start the Google OIDC login flow."""
+    return RedirectResponse(build_authorization_url(request))

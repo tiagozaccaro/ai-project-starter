@@ -30,5 +30,28 @@
     "speckit": {% .GenerateSpeckit%},
     "mcp": {% .GenerateMCP%},
     "testing": {% .TestingEnabled%}
-  }
+  }{% if .Metadata%},
+  "metadata": {
+    "description": "{% .Metadata.Description%}",
+    "author": "{% .Metadata.Author%}",
+    "license": "{% .Metadata.License%}",
+    "repository": "{% .Metadata.Repository%}"{% if .Metadata.Mobile%},
+    "mobile": {
+      "bundleId": "{% .Metadata.Mobile.BundleID%}",
+      "destinations": [
+        {% range $i, $d := .Metadata.Mobile.Destinations %}{% if $i %},{% end %}{"id": "{% $d.ID%}", "label": "{% $d.Label%}", "icon": "{% $d.Icon%}", "route": "{% $d.Route%}"}{% end %}
+      ],
+      "leftDrawerItems": [
+        {% range $i, $item := .Metadata.Mobile.LeftDrawerItems %}{% if $i %},{% end %}{"id": "{% $item.ID%}", "label": "{% $item.Label%}", "icon": "{% $item.Icon%}", "route": "{% $item.Route%}"}{% end %}
+      ],
+      "rightDrawerItems": [
+        {% range $i, $item := .Metadata.Mobile.RightDrawerItems %}{% if $i %},{% end %}{"id": "{% $item.ID%}", "label": "{% $item.Label%}", "icon": "{% $item.Icon%}", "route": "{% $item.Route%}"}{% end %}
+      ]{% if .Metadata.Mobile.Theme%},
+      "theme": {
+        "primaryColor": "{% .Metadata.Mobile.Theme.PrimaryColor%}",
+        "darkMode": {% .Metadata.Mobile.Theme.DarkMode%},
+        "useMaterial3": {% .Metadata.Mobile.Theme.UseMaterial3%}
+      }{% end %}
+    }{% end %}
+  }{% end %}
 }

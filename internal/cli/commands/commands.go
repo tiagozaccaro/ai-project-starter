@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	pipeline "github.com/your-org/ai-project-starter/internal/pipeline"
+	pipeline "github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
 )
 
 // NewGenerateCommand creates the `generate` command.
@@ -112,6 +112,84 @@ func NewListFeaturesCommand() *cobra.Command {
 
 	cmd.Flags().StringVarP(&profile, "profile", "p", "", "show features for a specific profile")
 	cmd.Flags().StringVarP(&output, "output", "o", "table", "output format: table, json, yaml")
+
+	return cmd
+}
+
+// NewUpgradeCommand creates the `upgrade` command.
+func NewUpgradeCommand() *cobra.Command {
+	var dest string
+	var apply bool
+	var dryRun bool
+
+	cmd := &cobra.Command{
+		Use:   "upgrade",
+		Short: "Regenerate an existing project from its saved configuration",
+		Long: "Regenerates template-rendered files of an existing project " +
+			"from its saved project.config.yaml. Renders to a temporary " +
+			"directory, diffs against the destination, and prompts to apply. " +
+			"Lockfiles and user-edited files are never touched.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return pipeline.Upgrade(pipeline.UpgradeOptions{
+				Dest:   dest,
+				Apply:  apply,
+				DryRun: dryRun,
+			})
+		},
+	}
+
+	cmd.Flags().StringVarP(&dest, "dest", "d", "", "destination directory (default: current directory)")
+	cmd.Flags().BoolVar(&apply, "apply", false, "write the changes without prompting")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show what would change without writing")
+
+	return cmd
+}
+
+// NewCompletionCommand creates the `completion` command.
+func NewCompletionCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "completion [bash|zsh|fish|powershell]",
+		Short: "Generate shell completion scripts",
+		Long: `Generate shell completion scripts for ai-project-starter.
+
+Supported shells:
+- bash
+- zsh
+- fish
+- powershell
+
+Examples:
+  # Bash
+  ai-project-starter completion bash > ~/.bash_completion.d/ai-project-starter
+  source ~/.bash_completion.d/ai-project-starter
+
+  # Zsh
+  ai-project-starter completion zsh > "${fpath[1]}/_ai-project-starter"
+
+  # Fish
+  ai-project-starter completion fish > ~/.config/fish/completions/ai-project-starter.fish
+
+  # PowerShell
+  ai-project-starter completion powershell > ai-project-starter.ps1
+`,
+		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
+		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			shell := args[0]
+			switch shell {
+			case "bash":
+				return cmd.Root().GenBashCompletion(cmd.OutOrStdout())
+			case "zsh":
+				return cmd.Root().GenZshCompletion(cmd.OutOrStdout())
+			case "fish":
+				return cmd.Root().GenFishCompletion(cmd.OutOrStdout(), true)
+			case "powershell":
+				return cmd.Root().GenPowerShellCompletionWithDesc(cmd.OutOrStdout())
+			default:
+				return cmd.Help()
+			}
+		},
+	}
 
 	return cmd
 }

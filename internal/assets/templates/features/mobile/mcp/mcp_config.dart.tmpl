@@ -1,0 +1,26 @@
+/// MCP (Model Context Protocol) client configuration for
+/// the generated mobile app (FR-019).
+///
+/// Points at the project's MCP server endpoints. Configure
+/// the server URL and enabled tools in project.config.yaml
+/// (features.mcp); this file is the mobile-side client.
+class McpConfig {
+  const McpConfig({
+    required this.serverUrl,
+    required this.enabledTools,
+  });
+
+  /// Base URL of the MCP server (e.g. the API app's
+  /// /mcp endpoint).
+  final String serverUrl;
+
+  /// Tools exposed to the mobile app.
+  final List<String> enabledTools;
+
+  /// Returns the configuration derived from the project
+  /// name. Override with environment-specific values.
+  static const fallback = McpConfig(
+    serverUrl: 'http://localhost:8000/mcp',
+    enabledTools: <String>[],
+  );
+}

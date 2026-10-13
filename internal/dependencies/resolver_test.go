@@ -3,7 +3,7 @@ package dependencies
 import (
 	"testing"
 
-	"github.com/your-org/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 )
 
 func baseConfig() *config.ProjectConfig {

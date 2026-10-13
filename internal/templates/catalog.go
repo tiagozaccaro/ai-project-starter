@@ -3,7 +3,7 @@ package templates
 import (
 	"embed"
 
-	"github.com/your-org/ai-project-starter/internal/assets"
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 )
 
 // Catalog returns the authoritative template manifest:
@@ -16,12 +16,14 @@ func Catalog() []TemplateManifest {
 	m = append(m, baseTemplates()...)
 	m = append(m, webTemplates()...)
 	m = append(m, apiTemplates()...)
+	m = append(m, mobileTemplates()...)
 	m = append(m, architectureTemplates()...)
+	m = append(m, databaseTemplates()...)
 	m = append(m, featureTemplates()...)
 	return m
 }
 
-// AssetsFS returns the embedded template filesystem.
+// AssetsFS returns the embedded filesystem.
 func AssetsFS() embed.FS { return assets.FS }
 
 func baseTemplates() []TemplateManifest {
@@ -57,6 +59,8 @@ func webTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/web/src/hooks/use-mobile.ts.tmpl", TargetPath: `{% .WebPath "src/hooks/use-mobile.ts"%}`, Condition: `{{ .GenerateWeb }}`},
 		{SourcePath: "templates/apps/web/src/lib/api.ts.tmpl", TargetPath: `{% .WebPath "src/lib/api.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAPI }}`},
 		{SourcePath: "templates/apps/web/src/lib/auth.ts.tmpl", TargetPath: `{% .WebPath "src/lib/auth.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAuth }}`},
+		// Supabase Auth client (web).
+		{SourcePath: "templates/features/auth/supabase/supabase_client.ts.tmpl", TargetPath: `{% .WebPath "src/lib/supabase.ts"%}`, Condition: `{{ and .GenerateWeb (eq .AuthProvider "supabase") }}`},
 		// UI components (always generated for web)
 		{SourcePath: "templates/apps/web/src/components/ui/avatar.tmpl", TargetPath: `{% .WebPath "src/components/ui/avatar.tsx"%}`, Condition: `{{ .GenerateWeb }}`},
 		{SourcePath: "templates/apps/web/src/components/ui/badge.tmpl", TargetPath: `{% .WebPath "src/components/ui/badge.tsx"%}`, Condition: `{{ .GenerateWeb }}`},
@@ -94,7 +98,6 @@ func apiTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/api/env.example.tmpl", TargetPath: `{% .APIPath ".env.example"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/__init__.py.tmpl", TargetPath: `{% .APIPath "app/__init__.py"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/main.py.tmpl", TargetPath: `{% .APIPath "app/main.py"%}`, Condition: `{{ .GenerateAPI }}`},
-		{SourcePath: "templates/apps/api/app/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/core/__init__.py.tmpl", TargetPath: `{% .APIPath "app/core/__init__.py"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/core/config.py.tmpl", TargetPath: `{% .APIPath "app/core/config.py"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/core/logging.py.tmpl", TargetPath: `{% .APIPath "app/core/logging.py"%}`, Condition: `{{ .GenerateAPI }}`},
@@ -105,26 +108,76 @@ func apiTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/api/app/api/v1/auth.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAuth }}`},
 		{SourcePath: "templates/apps/api/app/models/__init__.py.tmpl", TargetPath: `{% .APIPath "app/models/__init__.py"%}`, Condition: `{{ .GenerateAPI }}`},
 		{SourcePath: "templates/apps/api/app/models/base.py.tmpl", TargetPath: `{% .APIPath "app/models/base.py"%}`, Condition: `{{ .GenerateAPI }}`},
-		{SourcePath: "templates/apps/api/app/models/user.py.tmpl", TargetPath: `{% .APIPath "app/models/user.py"%}`, Condition: `{{ and .GenerateAPI (ne .Database.Type "none") }}`},
+		// Relational user model (postgresql, sqlite, mysql).
+		{SourcePath: "templates/apps/api/app/models/user.py.tmpl", TargetPath: `{% .APIPath "app/models/user.py"%}`, Condition: `{{ and .GenerateAPI (ne .Database.Type "none") (ne .Database.Type "mongodb") }}`},
 		{SourcePath: "templates/apps/api/tests/__init__.py.tmpl", TargetPath: `{% .APIPath "tests/__init__.py"%}`, Condition: `{{ and .GenerateAPI .TestingEnabled }}`},
 		{SourcePath: "templates/apps/api/tests/conftest.py.tmpl", TargetPath: `{% .APIPath "tests/conftest.py"%}`, Condition: `{{ and .GenerateAPI .TestingEnabled }}`},
 		{SourcePath: "templates/apps/api/tests/test_health.py.tmpl", TargetPath: `{% .APIPath "tests/test_health.py"%}`, Condition: `{{ and .GenerateAPI .TestingEnabled }}`},
 		{SourcePath: "templates/apps/api/tests/test_auth.py.tmpl", TargetPath: `{% .APIPath "tests/test_auth.py"%}`, Condition: `{{ and .GenerateAPI .TestingEnabled .GenerateAuth }}`},
 		{SourcePath: "templates/apps/api/AGENTS.md.tmpl", TargetPath: `{% .APIPath "AGENTS.md"%}`, Condition: `{{ and .GenerateAPI .GenerateSpeckit }}`},
+		// Google OIDC flow (FastAPI-managed, plan §5.1).
+		{SourcePath: "templates/features/auth/google_oidc/oauth.py.tmpl", TargetPath: `{% .APIPath "app/core/oauth.py"%}`, Condition: `{{ and .GenerateAPI (eq .AuthProvider "google-oidc") }}`},
+		{SourcePath: "templates/features/auth/google_oidc/callback.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth_callback.py"%}`, Condition: `{{ and .GenerateAPI (eq .AuthProvider "google-oidc") }}`},
+		{SourcePath: "templates/features/auth/google_oidc/middleware.py.tmpl", TargetPath: `{% .APIPath "app/core/middleware.py"%}`, Condition: `{{ and .GenerateAPI (eq .AuthProvider "google-oidc") }}`},
+		// Testing infrastructure.
+		{SourcePath: "templates/features/testing/pytest.ini.tmpl", TargetPath: `{% .APIPath "pytest.ini"%}`, Condition: `{{ and .GenerateAPI .TestingEnabled }}`},
+	}
+}
+
+func mobileTemplates() []TemplateManifest {
+	return []TemplateManifest{
+		{SourcePath: "templates/apps/mobile/pubspec.yaml.tmpl", TargetPath: `{% .MobilePath "pubspec.yaml"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/pubspec.lock.tmpl", TargetPath: `{% .MobilePath "pubspec.lock"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/analysis_options.yaml.tmpl", TargetPath: `{% .MobilePath "analysis_options.yaml"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/main.dart.tmpl", TargetPath: `{% .MobilePath "lib/main.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/navigation_state.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/navigation_state.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/bottom_nav_bar.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/bottom_nav_bar.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/app_drawer.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/app_drawer.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/user_drawer.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/user_drawer.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/drawer_controller.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/drawer_controller.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/navigation/adaptive_scaffold.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/adaptive_scaffold.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/test/navigation_test.dart.tmpl", TargetPath: `{% .MobilePath "test/navigation_test.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
+		{SourcePath: "templates/apps/mobile/test/widget_test.dart.tmpl", TargetPath: `{% .MobilePath "test/widget_test.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
+		{SourcePath: "templates/apps/mobile/AGENTS.md.tmpl", TargetPath: `{% .MobilePath "AGENTS.md"%}`, Condition: `{{ and .GenerateMobile .GenerateSpeckit }}`},
+		// Mobile feature templates.
+		{SourcePath: "templates/features/mobile/auth/login_screen.dart.tmpl", TargetPath: `{% .MobilePath "lib/features/auth/login_screen.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateAuth }}`},
+		{SourcePath: "templates/features/mobile/mcp/mcp_config.dart.tmpl", TargetPath: `{% .MobilePath "lib/features/mcp/mcp_config.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateMCP }}`},
+		{SourcePath: "templates/features/mobile/testing/test_utils.dart.tmpl", TargetPath: `{% .MobilePath "test/test_utils.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
+		{SourcePath: "templates/features/testing/flutter_test_config.dart.tmpl", TargetPath: `{% .MobilePath "test/flutter_test_config.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
 	}
 }
 
 func architectureTemplates() []TemplateManifest {
 	return []TemplateManifest{
-		// Alembic migrations (FastAPI architecture with a relational DB).
+		// Alembic migrations (FastAPI architecture with a relational DB;
+		// hybrid also generates these alongside Supabase migrations).
 		{SourcePath: "templates/apps/api/alembic.ini.tmpl", TargetPath: `{% .APIPath "alembic.ini"%}`, Condition: `{{ and .GenerateAPI .GenerateAlembic }}`},
 		{SourcePath: "templates/apps/api/alembic/env.py.tmpl", TargetPath: `{% .APIPath "alembic/env.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAlembic }}`},
 		{SourcePath: "templates/apps/api/alembic/script.py.mako.tmpl", TargetPath: `{% .APIPath "alembic/script.py.mako"%}`, Condition: `{{ and .GenerateAPI .GenerateAlembic }}`},
 		{SourcePath: "templates/apps/api/alembic/versions/001_initial.py.tmpl", TargetPath: `{% .APIPath "alembic/versions/001_initial.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAlembic }}`},
-		// Supabase (supabase-first and hybrid architectures).
-		{SourcePath: "templates/architectures/supabase/config.toml.tmpl", TargetPath: "supabase/config.toml", Condition: `{{ .GenerateSupabase }}`},
-		{SourcePath: "templates/architectures/supabase/migrations/001_initial_schema.sql.tmpl", TargetPath: "supabase/migrations/001_initial_schema.sql", Condition: `{{ .GenerateSupabase }}`},
-		{SourcePath: "templates/architectures/supabase/seed.sql.tmpl", TargetPath: "supabase/seed.sql", Condition: `{{ .GenerateSupabase }}`},
+		// Supabase-first architecture: Supabase only, no FastAPI backend.
+		{SourcePath: "templates/architectures/supabase-first/config.toml.tmpl", TargetPath: "supabase/config.toml", Condition: `{{ eq .Database.Architecture "supabase-first" }}`},
+		{SourcePath: "templates/architectures/supabase-first/migrations/001_initial_schema.sql.tmpl", TargetPath: "supabase/migrations/001_initial_schema.sql", Condition: `{{ eq .Database.Architecture "supabase-first" }}`},
+		{SourcePath: "templates/architectures/supabase-first/seed.sql.tmpl", TargetPath: "supabase/seed.sql", Condition: `{{ eq .Database.Architecture "supabase-first" }}`},
+		// Hybrid architecture: Supabase migrations AND FastAPI/Alembic.
+		{SourcePath: "templates/architectures/hybrid/config.toml.tmpl", TargetPath: "supabase/config.toml", Condition: `{{ eq .Database.Architecture "hybrid" }}`},
+		{SourcePath: "templates/architectures/hybrid/migrations/001_initial_schema.sql.tmpl", TargetPath: "supabase/migrations/001_initial_schema.sql", Condition: `{{ eq .Database.Architecture "hybrid" }}`},
+		{SourcePath: "templates/architectures/hybrid/seed.sql.tmpl", TargetPath: "supabase/seed.sql", Condition: `{{ eq .Database.Architecture "hybrid" }}`},
+	}
+}
+
+// databaseTemplates returns per-database overrides of
+// apps/api/app/database.py (and MongoDB startup/models).
+// Exactly one database.py is emitted per API-enabled config.
+func databaseTemplates() []TemplateManifest {
+	return []TemplateManifest{
+		{SourcePath: "templates/databases/postgresql/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "postgresql") }}`},
+		{SourcePath: "templates/databases/sqlite/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "sqlite") }}`},
+		{SourcePath: "templates/databases/mysql/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "mysql") }}`},
+		{SourcePath: "templates/databases/mongodb/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "mongodb") }}`},
+		{SourcePath: "templates/databases/mongodb/startup.py.tmpl", TargetPath: `{% .APIPath "app/startup.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "mongodb") }}`},
+		{SourcePath: "templates/databases/mongodb/models/user.py.tmpl", TargetPath: `{% .APIPath "app/models/user.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "mongodb") }}`},
+		{SourcePath: "templates/databases/none/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI (eq .Database.Type "none") }}`},
 	}
 }
 
@@ -173,13 +226,20 @@ func featureTemplates() []TemplateManifest {
 		{SourcePath: "templates/features/github/ISSUE_TEMPLATE/bug_report.md.tmpl", TargetPath: ".github/ISSUE_TEMPLATE/bug_report.md", Condition: `{{ .GenerateGitHub }}`},
 		{SourcePath: "templates/features/github/ISSUE_TEMPLATE/feature_request.md.tmpl", TargetPath: ".github/ISSUE_TEMPLATE/feature_request.md", Condition: `{{ .GenerateGitHub }}`},
 		{SourcePath: "templates/features/github/PULL_REQUEST_TEMPLATE.md.tmpl", TargetPath: ".github/PULL_REQUEST_TEMPLATE.md", Condition: `{{ .GenerateGitHub }}`},
-		// Spec Kit + Kilo Code.
+		// Spec Kit.
 		{SourcePath: "templates/features/speckit/spec-template.md.tmpl", TargetPath: ".specify/templates/spec-template.md", Condition: `{{ .GenerateSpeckit }}`},
 		{SourcePath: "templates/features/speckit/plan-template.md.tmpl", TargetPath: ".specify/templates/plan-template.md", Condition: `{{ .GenerateSpeckit }}`},
 		{SourcePath: "templates/features/speckit/tasks-template.md.tmpl", TargetPath: ".specify/templates/tasks-template.md", Condition: `{{ .GenerateSpeckit }}`},
 		{SourcePath: "templates/features/speckit/init-options.json.tmpl", TargetPath: ".specify/init-options.json", Condition: `{{ .GenerateSpeckit }}`},
 		{SourcePath: "templates/features/speckit/constitution.md.tmpl", TargetPath: ".specify/memory/constitution.md", Condition: `{{ .GenerateSpeckit }}`},
-		{SourcePath: "templates/features/speckit/kilocode-agents.md.tmpl", TargetPath: ".kilocode/rules/agents.md", Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/extensions.yml.tmpl", TargetPath: ".specify/extensions.yml", Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/feature.json.tmpl", TargetPath: ".specify/feature.json", Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/scripts/bash/setup-plan.sh.tmpl", TargetPath: ".specify/scripts/bash/setup-plan.sh", Executable: true, Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/scripts/bash/setup-tasks.sh.tmpl", TargetPath: ".specify/scripts/bash/setup-tasks.sh", Executable: true, Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/scripts/bash/check-prerequisites.sh.tmpl", TargetPath: ".specify/scripts/bash/check-prerequisites.sh", Executable: true, Condition: `{{ .GenerateSpeckit }}`},
+		{SourcePath: "templates/features/speckit/scripts/bash/common.sh.tmpl", TargetPath: ".specify/scripts/bash/common.sh", Executable: true, Condition: `{{ .GenerateSpeckit }}`},
+		// Kilo Code.
+		{SourcePath: "templates/features/kilocode/rules/agents.md.tmpl", TargetPath: ".kilocode/rules/agents.md", Condition: `{{ .GenerateSpeckit }}`},
 		// MCP.
 		{SourcePath: "templates/features/mcp/mcp.json.tmpl", TargetPath: ".specify/integrations/mcp.json", Condition: `{{ .GenerateMCP }}`},
 	}

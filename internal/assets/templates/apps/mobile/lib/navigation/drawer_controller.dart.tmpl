@@ -1,0 +1,137 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'app_drawer.dart';
+import 'user_drawer.dart';
+import 'bottom_nav_bar.dart';
+import 'navigation_state.dart';
+
+/// Small-screen scaffold wiring.
+///
+/// Constitution X: the left drawer opens ONLY via the app-menu
+/// IconButton; the right drawer opens ONLY via the profile
+/// CircleAvatar. Drawers are state-driven overlays, so they are
+/// mutually exclusive, start closed, and the Android back button
+/// closes an open drawer before leaving the app (PopScope below).
+class DrawerController extends StatelessWidget {
+  const DrawerController({
+    super.key,
+    required this.title,
+    required this.destinations,
+    required this.leftItems,
+    required this.rightItems,
+    required this.navigationShell,
+  });
+
+  final String title;
+  final List<Destination> destinations;
+  final List<DrawerItem> leftItems;
+  final List<DrawerItem> rightItems;
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<NavigationState>();
+    return PopScope(
+      canPop: !state.leftOpen && !state.rightOpen,
+      onPopInvoked: (didPop) {
+        // Android back: close an open drawer instead of leaving
+        // the app (platform convention, navigation rule 7).
+        if (!didPop) {
+          state.closeAll();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          // App-menu control: the ONLY control that opens the
+          // left drawer (Constitution X).
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            tooltip: 'Open menu',
+            onPressed: () => state.openLeft(),
+          ),
+          actions: [
+            // Profile control: the ONLY control that opens the
+            // right drawer (Constitution X).
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: InkWell(
+                onTap: () => state.openRight(),
+                customBorder: const CircleBorder(),
+                child: const CircleAvatar(
+                  radius: 16,
+                  child: Icon(Icons.account_circle),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: [
+            navigationShell,
+            if (state.leftOpen)
+              _DrawerOverlay(
+                alignLeft: true,
+                onDismiss: () => state.closeAll(),
+                child: AppDrawer(items: leftItems),
+              ),
+            if (state.rightOpen)
+              _DrawerOverlay(
+                alignLeft: false,
+                onDismiss: () => state.closeAll(),
+                child: UserDrawer(items: rightItems),
+              ),
+          ],
+        ),
+        bottomNavigationBar: AppBottomNavBar(
+          destinations: destinations,
+          navigationShell: navigationShell,
+        ),
+      ),
+    );
+  }
+}
+
+/// Slide-in drawer overlay with a tappable scrim. The overlay is
+/// mounted only while NavigationState says the drawer is open, so
+/// open/closed state is directly observable in widget tests.
+class _DrawerOverlay extends StatelessWidget {
+  const _DrawerOverlay({
+    required this.alignLeft,
+    required this.onDismiss,
+    required this.child,
+  });
+
+  final bool alignLeft;
+  final VoidCallback onDismiss;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onDismiss,
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: Colors.black54),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          bottom: 0,
+          left: alignLeft ? 0 : null,
+          right: alignLeft ? null : 0,
+          child: SizedBox(
+            width: 300,
+            child: Material(
+              elevation: 4,
+              child: child,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

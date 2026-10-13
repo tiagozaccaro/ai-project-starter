@@ -1,0 +1,35 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'package:{% dartPackageName .ProjectName %}/main.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/navigation_state.dart';
+
+void main() {
+  testWidgets('app renders the first destination', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => NavigationState(),
+        child: MaterialApp.router(
+          title: '{% .ProjectName %}',
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(appDestinations.first.label), findsOneWidget);
+  });
+
+  testWidgets('app bar shows the project title', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => NavigationState(),
+        child: MaterialApp.router(
+          title: '{% .ProjectName %}',
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('{% .ProjectName %}'), findsOneWidget);
+  });
+}

@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 
-	"github.com/your-org/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 )
 
 // osFile and osModeCharDevice are aliased to avoid importing

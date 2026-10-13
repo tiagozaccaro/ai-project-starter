@@ -235,6 +235,11 @@ func TestTestingEnabledDefault(t *testing.T) {
 	if !cfg.TestingEnabled() {
 		t.Error("expected testing default true")
 	}
+	f := false
+	cfg.Features.Testing = &f
+	if cfg.TestingEnabled() {
+		t.Error("expected testing false when explicitly set")
+	}
 }
 
 func containsCode(errs []ValidationError, code string) bool {

@@ -1,0 +1,98 @@
+import 'package:flutter/material.dart';
+
+/// A bottom-navigation destination (Constitution X: 3-5 items,
+/// all configurable, no hardcoded illustrative destinations).
+class Destination {
+  const Destination({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.route,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final String route;
+}
+
+/// A navigation drawer item (left or right drawer).
+class DrawerItem {
+  const DrawerItem({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.route,
+  });
+
+  final String id;
+  final String label;
+  final IconData icon;
+  final String route;
+}
+
+/// Navigation state for the generated app (Constitution X).
+///
+/// Invariants enforced here (unit-testable without widgets):
+/// - Both drawers are closed on startup.
+/// - Drawers are mutually exclusive: opening one closes the other.
+/// - Tab switches preserve the selected index; state preservation
+///   of page contents is handled by StatefulShellRoute.indexedStack.
+class NavigationState extends ChangeNotifier {
+  int _currentIndex = 0;
+  bool _leftOpen = false;
+  bool _rightOpen = false;
+
+  /// Index of the selected bottom-navigation destination.
+  int get currentIndex => _currentIndex;
+
+  /// Whether the left (app functionality) drawer is open.
+  bool get leftOpen => _leftOpen;
+
+  /// Whether the right (profile/settings) drawer is open.
+  bool get rightOpen => _rightOpen;
+
+  /// Selects the bottom-navigation destination at [index].
+  /// Selecting a tab closes any open drawer.
+  void selectTab(int index) {
+    _currentIndex = index;
+    _leftOpen = false;
+    _rightOpen = false;
+    notifyListeners();
+  }
+
+  /// Opens the left drawer (app functionality), closing the
+  /// right drawer if it is open (mutual exclusion).
+  void openLeft() {
+    _leftOpen = true;
+    _rightOpen = false;
+    notifyListeners();
+  }
+
+  /// Closes the left drawer.
+  void closeLeft() {
+    _leftOpen = false;
+    notifyListeners();
+  }
+
+  /// Opens the right drawer (profile/settings), closing the
+  /// left drawer if it is open (mutual exclusion).
+  void openRight() {
+    _rightOpen = true;
+    _leftOpen = false;
+    notifyListeners();
+  }
+
+  /// Closes the right drawer.
+  void closeRight() {
+    _rightOpen = false;
+    notifyListeners();
+  }
+
+  /// Closes both drawers.
+  void closeAll() {
+    _leftOpen = false;
+    _rightOpen = false;
+    notifyListeners();
+  }
+}

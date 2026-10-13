@@ -21,6 +21,46 @@ oauth.register(  # pyright: ignore[reportUnknownMemberType]
 def generate_state() -> str:
     """Generate a cryptographically random OAuth state token."""
     return secrets.token_urlsafe(32)
+
+
+def create_session_token(claims: dict) -> str:
+    """Create a signed session token (JWT, HS256)."""
+    from app.core.config import get_settings
+
+    from jose import jwt as jose_jwt
+
+    settings = get_settings()
+    return jose_jwt.encode(claims, settings.session_secret, algorithm="HS256")
+
+
+def verify_session_token(token: str) -> dict | None:
+    """Verify a session token and return its claims, or None."""
+    from app.core.config import get_settings
+
+    from jose import jwt as jose_jwt
+
+    settings = get_settings()
+    try:
+        return jose_jwt.decode(
+            token, settings.session_secret, algorithms=["HS256"]
+        )
+    except jose_jwt.JWTError:
+        return None
+
+
+def verify_id_token(id_token: str, client_id: str) -> dict | None:
+    """Verify a Google ID token and return its claims, or None."""
+    from google.oauth2 import id_token as google_id_token
+    from google.auth.transport import requests as google_requests
+
+    try:
+        return google_id_token.verify_token(
+            id_token,
+            request=google_requests.Request(),
+            audience=client_id,
+        )
+    except ValueError:
+        return None
 {% else if eq .AuthProvider "supabase"%}
 import hashlib
 import hmac

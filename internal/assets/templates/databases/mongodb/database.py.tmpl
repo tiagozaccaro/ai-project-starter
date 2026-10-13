@@ -1,0 +1,33 @@
+"""Database engine and session management for {% .ProjectName%}.
+
+MongoDB: Motor (async) + Beanie ODM.
+"""
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from motor.motor_asyncio import AsyncIOMotorClient
+
+from app.core.config import get_settings
+
+_client: AsyncIOMotorClient | None = None
+
+
+def get_mongo_client() -> AsyncIOMotorClient:
+    """Return the shared Motor client."""
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(get_settings().database_url)
+    return _client
+
+
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[None, None]:
+    """MongoDB does not use SQLAlchemy sessions; yield nothing."""
+    yield None
+
+
+async def init_db() -> None:
+    """Initialize MongoDB indexes; document models register
+    themselves with Beanie on first use."""
+    return None

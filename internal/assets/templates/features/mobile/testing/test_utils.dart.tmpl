@@ -1,0 +1,37 @@
+/// Shared test utilities for the generated mobile app.
+///
+/// Use these helpers in widget and integration tests to
+/// launch the app with a controlled navigation state and
+/// to assert the Constitution X navigation invariants.
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'package:{% dartPackageName .ProjectName %}/main.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/navigation_state.dart';
+
+/// Launches the app for testing with a fresh NavigationState.
+Widget launchTestApp() {
+  return ChangeNotifierProvider(
+    create: (_) => NavigationState(),
+    child: MaterialApp.router(
+      title: '{% .ProjectName %}',
+      routerConfig: router,
+    ),
+  );
+}
+
+/// Returns the NavigationState from the test environment.
+NavigationState navigationState(WidgetTester tester) =>
+    tester.state<NavigationState>(
+      find.descendant(
+        of: find.byType(ChangeNotifierProvider),
+        matching: find.byType(NavigationState),
+      ),
+    );
+
+/// Asserts that both drawers are closed (Constitution X).
+void expectDrawersClosed(WidgetTester tester) {
+  expect(find.byType(AppDrawer), findsNothing);
+  expect(find.byType(UserDrawer), findsNothing);
+}

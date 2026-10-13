@@ -1,0 +1,16 @@
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: custom
+projectName: "golden-custom"
+applications:
+  web: true
+  api: false
+  mobile: false
+database:
+  type: none
+  architecture: fastapi
+features:
+  charts: true
+  graphs: true
+  observability: true
+  testing: true

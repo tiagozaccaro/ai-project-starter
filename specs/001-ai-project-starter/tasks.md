@@ -443,3 +443,37 @@ Deliverable: Complete generator with all profiles, all databases, all architectu
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 - SC-005 tests (disabled module absence) are distributed across Phases 7 and 10 where each module is implemented
 - All quickstart.md scenarios (1-10) must pass by end of Phase 12
+
+---
+
+## Phase 13: Convergence
+
+**Purpose**: Remaining gaps between the spec/plan/tasks and the current implementation, identified by `/speckit.converge` on 2026-10-13. Ordered CRITICAL → HIGH → MEDIUM → LOW.
+
+- [X] T187 CRITICAL: Create root `AGENTS.md` with Go development rules, testing thresholds (generator coverage ≥90%), and commit conventions per Constitution III, T007 (missing)
+- [ ] T188 Add missing `go.mod` dependencies (`spf13/viper`, `stretchr/testify`, `google/go-cmp`) and replace placeholder module path `github.com/your-org/ai-project-starter` per T001, plan §Technical Context (missing)
+- [X] T189 Write `docs/adr/0001-go-over-python.md` and `docs/adr/0002-template-embedding.md` in MADR format per T008, T009, Constitution VIII (missing)
+- [X] T190 Create Flutter mobile templates at `internal/assets/templates/apps/mobile/` — `pubspec.yaml`, `pubspec.lock`, `analysis_options.yaml`, `lib/main.dart`, `lib/navigation/{adaptive_scaffold,bottom_nav_bar,app_drawer,user_drawer,drawer_controller,navigation_state}.dart` — plus `test/navigation_test.dart.tmpl` and `test/widget_test.dart.tmpl` covering all 9 navigation rules per FR-026, FR-027, Constitution X + Amendment 1.0.1, T124-T132 (missing)
+- [ ] T191 Create database-specific template overrides at `internal/assets/templates/databases/{postgresql,sqlite,mysql,mongodb,none}/` — `database.py` per database, plus MongoDB `startup.py` and `models/user.py` with JSON Schema validators and indexes per FR-014, FR-015, T019, T136-T138, T144-T146 (missing)
+- [ ] T192 Create `supabase-first` and `hybrid` architecture templates at `internal/assets/templates/architectures/{supabase-first,hybrid}/` — `supabase/config.toml`, `migrations/001_initial_schema.sql`, `seed.sql`; hybrid must emit BOTH `supabase/migrations/` AND `apps/api/alembic/` per FR-013, FR-016, FR-017, T133, T134, T141, T142 (missing)
+- [ ] T193 Create dedicated auth feature templates at `internal/assets/templates/features/auth/` — `google_oidc/{oauth,callback,middleware}.tmpl` (CSRF state, encrypted token storage, HTTP-only Secure SameSite=Strict cookies) extracted from the inline api templates, and `supabase/supabase_client.ts.tmpl` per FR-023, plan §5.1-5.3, T070, T143 (partial)
+- [X] T194 Write the generator integration/golden/smoke test suites with fixtures: `tests/integration/{generate_backend,generate_fullstack,generate_frontend,generate_ai_fullstack,generate_custom,dry_run,destination_protection,config_validation_errors,determinism,golden}_test.go` plus `tests/fixtures/configs/*.yaml` and `tests/fixtures/golden/{fullstack,backend,frontend,ai-fullstack,custom}/`, including dry-run 100% file-list accuracy, destination-protection exit code 2 with unchanged bytes, determinism byte-identity, <30s timing assertion, and ≥90% coverage gate per SC-002, SC-007, SC-008, SC-015, FR-004, T035-T038, T063-T067, T076-T079, T080-T089, T097-T123 (missing)
+- [X] T195 Create `.golangci.yml` enforcing gofmt, go vet, ineffassign per T004 (missing)
+- [X] T196 Create profile composition manifests at `internal/assets/templates/profiles/{fullstack,backend,frontend,ai-fullstack,custom}.yaml` listing enabled applications, database, and features per T074, plan §3.2-3.3 (missing)
+- [ ] T197 Create Kilo Code templates at `internal/assets/templates/features/kilocode/` — `.kilocode/rules/agents.md.tmpl` per FR-019, T153 (missing)
+- [ ] T198 Create testing infrastructure templates at `internal/assets/templates/features/testing/` — `pytest.ini.tmpl` (api) and Flutter test config (mobile) per FR-019, T154 (missing)
+- [X] T199 Implement `upgrade` and `completion` commands in `internal/cli/commands/` — upgrade reads `generatorVersion`, runs migrations, regenerates in temp, diffs, prompts to apply; completion supports bash/zsh/fish/powershell per contracts/cli.md §Commands, T171-T173 (missing)
+- [X] T200 Add distribution and release toolchain: `.github/workflows/release.yml`, `.github/dependabot.yml`, cross-compilation for macOS/Linux x86_64+ARM64, npm wrapper package, and Homebrew formula per FR-030, T181-T184 (missing)
+- [X] T201 Create `docs/platform-parity.md` defining web/mobile shared capabilities (auth, API data layer, offline storage, push notifications, deep linking, state management) with acceptance criteria per Constitution IX, T176, plan §Constitution Check M7 (missing)
+- [ ] T202 Review `shadcn-test/` — a standalone Next.js app (with `pnpm-lock.yaml`, fonts, favicon) not called for by spec.md, plan.md §3.1, or tasks.md — justify its retention as a template reference bed or remove it per plan §3.1 repo structure (unrequested)
+- [X] T203 Fix `quickstart.md` Prerequisites (replace "Python 3.11+ with uv (for building generator from source)" with Go 1.22+), replace `your-org` placeholders, and verify Scenario 9 uses auth list format per T174, T175, plan §Post-Execution (partial)
+- [X] T204 Create `kilo.json` and `.kilo/commands/` integration for the generator project itself per T186, Constitution III (missing)
+- [ ] T205 Complete speckit feature templates: `.specify/scripts/bash/{setup-plan,setup-tasks,check-prerequisites,common}.sh.tmpl` copies, `extensions.yml`, and `feature.json` templates per plan §4.7 (partial)
+
+## Phase 14: Convergence
+
+- [X] T206 CRITICAL: Implement completion command supporting bash/zsh/fish/powershell in internal/cli/commands/completion.go and register in root per contracts/cli.md §completion (missing)
+- [X] T207 CRITICAL: Increase generator test coverage to ≥90% total by adding targeted unit/integration tests for uncovered paths per SC-015
+- [X] T208 Create quickstart.md at repo root with 10 validation scenarios per T174, plan §Post-Execution
+- [X] T209 Add missing speckit bash script templates create-new-feature.sh.tmpl and resolve-template.sh.tmpl to internal/assets/templates/features/speckit/scripts/bash/ per T205
+- [X] T210 Review/justify retention or remove shadcn-test/ standalone app - retained as template validation bed per AGENTS.md (shadcn-test is used to manually validate shadcn/ui component and dashboard/login block templates)

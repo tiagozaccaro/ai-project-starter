@@ -1,0 +1,22 @@
+"""Database module for {% .ProjectName%}.
+
+No database selected (database.type=none). This stub keeps
+the app importable; get_db() yields no session and init_db()
+is a no-op.
+"""
+
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from typing import Any
+
+
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[Any, None]:
+    """No database configured; yield nothing."""
+    yield None
+
+
+async def init_db() -> None:
+    """No database to initialize."""
+    return None

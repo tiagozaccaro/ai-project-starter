@@ -1,0 +1,67 @@
+"""Google OIDC callback for {% .ProjectName%}.
+
+Validates the authorization code and CSRF state, then
+establishes the encrypted session (HTTP-only cookie).
+"""
+
+from urllib.parse import urlencode
+
+import httpx
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+
+from app.core.config import get_settings
+from app.core.security import (
+    create_session_token,
+    verify_id_token,
+)
+
+
+async def handle_callback(request: Request) -> RedirectResponse:
+    """Handle the Google OIDC callback."""
+    settings = get_settings()
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    error = request.query_params.get("error")
+
+    if error:
+        return RedirectResponse(f"/login?error={urlencode({'error': error})}")
+
+    if not code or not state:
+        return RedirectResponse("/login?error=missing_params")
+
+    # CSRF: state must match the value we issued.
+    session_state = request.session.pop("oauth_state", None)
+    if session_state != state:
+        return RedirectResponse("/login?error=invalid_state")
+
+    # Exchange the authorization code for tokens.
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": settings.oauth_callback_url,
+                "grant_type": "authorization_code",
+            },
+        )
+        tokens = response.json()
+
+    id_token = tokens.get("id_token", "")
+    claims = verify_id_token(id_token, settings.google_client_id)
+    if claims is None:
+        return RedirectResponse("/login?error=invalid_token")
+
+    session_token = create_session_token(claims)
+    response = RedirectResponse("/")
+    response.set_cookie(
+        key="session",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.session_max_age,
+    )
+    return response

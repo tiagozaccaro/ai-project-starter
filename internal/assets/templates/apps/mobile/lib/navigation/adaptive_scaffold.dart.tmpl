@@ -1,0 +1,100 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'drawer_controller.dart';
+import 'navigation_state.dart';
+
+/// Adaptive scaffold implementing Amendment 1.0.1: on screens wider
+/// than 600dp, permanent navigation surfaces replace the
+/// control-activated drawers — a permanent NavigationRail (left) and
+/// a permanent profile/settings panel (right). On smaller screens the
+/// standard mobile navigation model applies (Constitution X).
+class AdaptiveScaffold extends StatelessWidget {
+  const AdaptiveScaffold({
+    super.key,
+    required this.title,
+    required this.destinations,
+    required this.leftItems,
+    required this.rightItems,
+    required this.navigationShell,
+  });
+
+  final String title;
+  final List<Destination> destinations;
+  final List<DrawerItem> leftItems;
+  final List<DrawerItem> rightItems;
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<NavigationState>();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 600) {
+          // Large screen: permanent navigation surfaces
+          // (Amendment 1.0.1). No control-activated drawers.
+          return Scaffold(
+            body: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: state.currentIndex,
+                  onDestinationSelected: (index) {
+                    final current = state.currentIndex;
+                    state.selectTab(index);
+                    navigationShell.goBranch(
+                      index,
+                      initialLocation: index == current,
+                    );
+                  },
+                  destinations: [
+                    for (final destination in destinations)
+                      NavigationRailDestination(
+                        icon: Icon(destination.icon),
+                        selectedIcon: Icon(destination.icon),
+                        label: Text(destination.label),
+                      ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(child: navigationShell),
+                if (rightItems.isNotEmpty) ...[
+                  const VerticalDivider(thickness: 1, width: 1),
+                  SizedBox(
+                    width: 240,
+                    child: Material(
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          const ListTile(
+                            leading: CircleAvatar(
+                              child: Icon(Icons.account_circle),
+                            ),
+                            title: Text('Profile'),
+                          ),
+                          for (final item in rightItems)
+                            ListTile(
+                              leading: Icon(item.icon),
+                              title: Text(item.label),
+                              onTap: () => context.go(item.route),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+        return DrawerController(
+          title: title,
+          destinations: destinations,
+          leftItems: leftItems,
+          rightItems: rightItems,
+          navigationShell: navigationShell,
+        );
+      },
+    );
+  }
+}

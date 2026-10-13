@@ -1,6 +1,11 @@
 package config
 
-import "encoding/json"
+import (
+	"io/fs"
+
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
+	"gopkg.in/yaml.v3"
+)
 
 // ProfileInfo describes a built-in profile for listing.
 type ProfileInfo struct {
@@ -8,124 +13,114 @@ type ProfileInfo struct {
 	Description string `json:"description" yaml:"description"`
 }
 
+// profilePreset pairs a composition manifest's description with
+// the ProjectConfig preset it defines.
+type profilePreset struct {
+	description string
+	config      ProjectConfig
+}
+
+// profileOrder preserves the historical listing order of the
+// built-in profiles.
+var profileOrder = []string{
+	ProfileFullstack,
+	ProfileBackend,
+	ProfileFrontend,
+	ProfileAIFullstack,
+	ProfileCustom,
+}
+
+// profilePresets is the map of profile name to preset, loaded
+// from the embedded composition manifests under
+// templates/profiles/ (T196). The manifests are the single
+// source of truth for profile defaults.
+var profilePresets = loadProfilePresets()
+
+// profileManifest is the on-disk shape of a profile composition
+// manifest. The embedded ProjectConfig carries the applications,
+// database, and features sections.
+type profileManifest struct {
+	Name          string `yaml:"name"`
+	Description   string `yaml:"description"`
+	ProjectConfig `yaml:",inline"`
+}
+
+// loadProfilePresets reads every embedded profile manifest and
+// indexes it by profile name. A manifest that fails to parse is
+// skipped so a single bad file cannot disable the generator.
+func loadProfilePresets() map[string]profilePreset {
+	presets := make(map[string]profilePreset)
+	entries, err := fs.Glob(assets.FS, "templates/profiles/*.yaml")
+	if err != nil {
+		return presets
+	}
+	for _, entry := range entries {
+		data, err := fs.ReadFile(assets.FS, entry)
+		if err != nil {
+			continue
+		}
+		var manifest profileManifest
+		if err := yaml.Unmarshal(data, &manifest); err != nil {
+			continue
+		}
+		if manifest.Name == "" {
+			continue
+		}
+		cfg := manifest.ProjectConfig
+		cfg.Profile = manifest.Name
+		presets[manifest.Name] = profilePreset{
+			description: manifest.Description,
+			config:      cfg,
+		}
+	}
+	return presets
+}
+
 // Profiles returns the built-in profile metadata in a stable order.
 func Profiles() []ProfileInfo {
-	return []ProfileInfo{
-		{ProfileFullstack, "Next.js web + FastAPI backend"},
-		{ProfileBackend, "FastAPI backend only"},
-		{ProfileFrontend, "Next.js web only"},
-		{ProfileAIFullstack, "Fullstack with AI integration"},
-		{ProfileCustom, "Fully customizable"},
+	profiles := make([]ProfileInfo, 0, len(profileOrder))
+	for _, name := range profileOrder {
+		preset, ok := profilePresets[name]
+		if !ok {
+			continue
+		}
+		profiles = append(profiles, ProfileInfo{
+			Name:        name,
+			Description: preset.description,
+		})
 	}
+	return profiles
 }
 
 // ProfileExists reports whether name is a built-in profile.
 func ProfileExists(name string) bool {
-	for _, p := range Profiles() {
-		if p.Name == name {
-			return true
-		}
-	}
-	return false
+	_, ok := profilePresets[name]
+	return ok
 }
 
 // DefaultProfileConfig returns a deep copy of the defaults for the
 // named profile (copy-on-select semantics: callers may freely mutate
 // the result without affecting the built-in preset).
 func DefaultProfileConfig(profile string) (ProjectConfig, bool) {
-	var base ProjectConfig
-	switch profile {
-	case ProfileFullstack:
-		base = ProjectConfig{
-			SchemaVersion:    SchemaVersion,
-			GeneratorVersion: GeneratorVersion,
-			Profile:          ProfileFullstack,
-			Applications:     ApplicationsConfig{Web: true, API: true, Mobile: false},
-			Database:         DatabaseConfig{Type: "postgresql", Architecture: "fastapi"},
-			Features: FeaturesConfig{
-				Auth:               []string{"google-oidc"},
-				Dashboard:          true,
-				Login:              true,
-				DatabaseMigrations: boolPtr(true),
-				Testing:            boolPtr(true),
-				GitHub:             true,
-				VSCode:             true,
-				Speckit:            true,
-			},
-		}
-	case ProfileBackend:
-		base = ProjectConfig{
-			SchemaVersion:    SchemaVersion,
-			GeneratorVersion: GeneratorVersion,
-			Profile:          ProfileBackend,
-			Applications:     ApplicationsConfig{Web: false, API: true, Mobile: false},
-			Database:         DatabaseConfig{Type: "postgresql", Architecture: "fastapi"},
-			Features: FeaturesConfig{
-				DatabaseMigrations: boolPtr(true),
-				Testing:            boolPtr(true),
-			},
-		}
-	case ProfileFrontend:
-		base = ProjectConfig{
-			SchemaVersion:    SchemaVersion,
-			GeneratorVersion: GeneratorVersion,
-			Profile:          ProfileFrontend,
-			Applications:     ApplicationsConfig{Web: true, API: false, Mobile: false},
-			Database:         DatabaseConfig{Type: "none", Architecture: "fastapi"},
-			Features: FeaturesConfig{
-				Dashboard:          true,
-				DatabaseMigrations: boolPtr(false),
-				Testing:            boolPtr(true),
-			},
-		}
-	case ProfileAIFullstack:
-		base = ProjectConfig{
-			SchemaVersion:    SchemaVersion,
-			GeneratorVersion: GeneratorVersion,
-			Profile:          ProfileAIFullstack,
-			Applications:     ApplicationsConfig{Web: true, API: true, Mobile: false},
-			Database:         DatabaseConfig{Type: "postgresql", Architecture: "fastapi"},
-			Features: FeaturesConfig{
-				Auth:               []string{"google-oidc"},
-				Dashboard:          true,
-				Login:              true,
-				AI:                 true,
-				DatabaseMigrations: boolPtr(true),
-				Testing:            boolPtr(true),
-			},
-		}
-	case ProfileCustom:
-		base = ProjectConfig{
-			SchemaVersion:    SchemaVersion,
-			GeneratorVersion: GeneratorVersion,
-			Profile:          ProfileCustom,
-			Applications:     ApplicationsConfig{Web: false, API: false, Mobile: false},
-			Database:         DatabaseConfig{Type: "none", Architecture: "fastapi"},
-			Features: FeaturesConfig{
-				DatabaseMigrations: boolPtr(true),
-				Testing:            boolPtr(true),
-			},
-		}
-	default:
+	preset, ok := profilePresets[profile]
+	if !ok {
 		return ProjectConfig{}, false
 	}
-	return deepCopy(base), true
+	return deepCopy(preset.config), true
 }
 
 // deepCopy returns an independent copy of cfg so profile presets are
 // never live-referenced (copy-on-select).
 func deepCopy(cfg ProjectConfig) ProjectConfig {
-	raw, err := json.Marshal(cfg)
+	raw, err := yaml.Marshal(cfg)
 	if err != nil {
-		// ProjectConfig is always JSON-serializable; fall back to a
+		// ProjectConfig is always serializable; fall back to a
 		// shallow copy which is still safe for the scalar-only preset.
 		return cfg
 	}
 	var out ProjectConfig
-	if err := json.Unmarshal(raw, &out); err != nil {
+	if err := yaml.Unmarshal(raw, &out); err != nil {
 		return cfg
 	}
 	return out
 }
-
-func boolPtr(b bool) *bool { return &b }

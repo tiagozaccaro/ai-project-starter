@@ -1,0 +1,52 @@
+import 'package:flutter/material.dart';
+
+/// Authentication screen for the generated mobile app.
+///
+/// Mirrors the web login capability (platform parity,
+/// Constitution IX). The provider matches the project's
+/// exclusive auth selection (plan §5.1):
+/// - google-oidc: FastAPI-managed OIDC flow
+/// - supabase: Supabase Auth SDK
+///
+/// Replace the placeholder handlers with the real
+/// provider integration for your auth provider.
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  bool _isLoading = false;
+
+  Future<void> _signIn() async {
+    setState(() => _isLoading = true);
+    try {
+      // TODO: integrate the configured auth provider
+      // (google-oidc or supabase) here.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sign in')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: FilledButton.icon(
+            onPressed: _isLoading ? null : _signIn,
+            icon: const Icon(Icons.login),
+            label: Text(_isLoading ? 'Signing in…' : 'Continue with Google'),
+          ),
+        ),
+      ),
+    );
+  }
+}
