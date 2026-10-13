@@ -1,25 +1,26 @@
-"""AI provider abstraction for {% .ProjectName%}.
+"""AI provider abstraction using Pydantic AI for {% .ProjectName%}.
 
-Defines a common interface so providers can be swapped
-without changing calling code (FR-019).
+Uses pydantic-ai for type-safe agent orchestration with OpenAI-compatible APIs.
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider as PydanticOpenAIProvider
+from pydantic import BaseModel, Field
+
+from app.core.config import get_settings
 
 
-@dataclass
-class CompletionRequest:
+class CompletionRequest(BaseModel):
     """A text completion request."""
 
-    prompt: str
+    prompt: str = Field(..., min_length=1)
     model: str = "gpt-4o-mini"
     max_tokens: int = 256
     temperature: float = 0.7
 
 
-@dataclass
-class CompletionResponse:
+class CompletionResponse(BaseModel):
     """A text completion response."""
 
     text: str
@@ -27,51 +28,59 @@ class CompletionResponse:
     provider: str
 
 
-class AIProvider(ABC):
-    """Abstract base class for AI providers."""
-
-    @abstractmethod
-    async def complete(self, request: CompletionRequest) -> CompletionResponse:
-        """Generate a completion for the request."""
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Return the provider name."""
+async def get_openai_model(model: str = "gpt-4o-mini") -> OpenAIModel:
+    """Create an OpenAI-compatible model for Pydantic AI."""
+    settings = get_settings()
+    provider = PydanticOpenAIProvider(
+        api_key=settings.openai_api_key,
+        base_url=getattr(settings, "openai_base_url", None),
+    )
+    return OpenAIModel(model, provider=provider)
 
 
-class OpenAIProvider(AIProvider):
-    """OpenAI-compatible provider."""
+async def complete(request: CompletionRequest) -> CompletionResponse:
+    """Generate a completion using Pydantic AI."""
+    model = await get_openai_model(request.model)
+    agent = Agent(model)
 
-    @property
-    def name(self) -> str:
-        """Return the provider name."""
-        return "openai"
-
-    async def complete(self, request: CompletionRequest) -> CompletionResponse:
-        """Generate a completion using the OpenAI API."""
-        from openai import AsyncOpenAI
-
-        from app.core.config import get_settings
-
-        client = AsyncOpenAI(api_key=get_settings().openai_api_key)
-        result = await client.chat.completions.create(
-            model=request.model,
-            messages=[{"role": "user", "content": request.prompt}],
-            max_tokens=request.max_tokens,
-            temperature=request.temperature,
-        )
-        choice = result.choices[0]
-        text = choice.message.content or ""
-        return CompletionResponse(text=text, model=request.model, provider=self.name)
+    result = await agent.run(request.prompt)
+    return CompletionResponse(
+        text=result.data,
+        model=request.model,
+        provider="openai",
+    )
 
 
-_PROVIDERS: dict[str, type[AIProvider]] = {
-    "openai": OpenAIProvider,
-}
+async def stream_complete(request: CompletionRequest):
+    """Stream a completion using Pydantic AI."""
+    model = await get_openai_model(request.model)
+    agent = Agent(model)
+
+    async with agent.run_stream(request.prompt) as result:
+        async for chunk in result.stream_text(delta=True):
+            yield chunk
 
 
-def get_provider(name: str = "openai") -> AIProvider:
-    """Return a provider instance by name."""
-    cls = _PROVIDERS.get(name, OpenAIProvider)
-    return cls()
+def create_agent(
+    system_prompt: str,
+    model: str = "gpt-4o-mini",
+    output_type: type[BaseModel] | None = None,
+    tools: list = None,
+) -> Agent:
+    """Create a typed Pydantic AI agent.
+
+    Args:
+        system_prompt: System instructions for the agent
+        model: Model name (OpenAI-compatible)
+        output_type: Pydantic model for structured output
+        tools: List of tool functions (async functions with Pydantic models)
+
+    Returns:
+        Configured Pydantic AI Agent
+    """
+    return Agent(
+        await get_openai_model(model),
+        system_prompt=system_prompt,
+        output_type=output_type,
+        tools=tools or [],
+    )

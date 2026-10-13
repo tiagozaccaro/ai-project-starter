@@ -1,0 +1,42 @@
+import { createAgent, stream_complete } from "@/ai/provider"
+import { CompletionRequest } from "@/ai/provider"
+import { streamText } from "ai"
+
+export const runtime = "edge"
+
+export async function POST(req: Request) {
+  try {
+    const { messages } = await req.json()
+
+    // Convert Vercel AI SDK messages to Pydantic AI format
+    const lastMessage = messages[messages.length - 1]
+    const systemPrompt = messages.find((m: any) => m.role === "system")?.content || ""
+
+    const request: CompletionRequest = {
+      prompt: lastMessage.content,
+      model: "gpt-4o-mini",
+      temperature: 0.7,
+      max_tokens: 4096,
+    }
+
+    // Create agent with system prompt
+    const agent = createAgent({
+      systemPrompt,
+      model: request.model,
+    })
+
+    // Stream response using Vercel AI SDK
+    const result = streamText({
+      model: agent.model,
+      system: systemPrompt,
+      prompt: request.prompt,
+      temperature: request.temperature,
+      maxTokens: request.max_tokens,
+    })
+
+    return result.toAIStreamResponse()
+  } catch (error) {
+    console.error("AI Chat error:", error)
+    return new Response("Internal Server Error", { status: 500 })
+  }
+}

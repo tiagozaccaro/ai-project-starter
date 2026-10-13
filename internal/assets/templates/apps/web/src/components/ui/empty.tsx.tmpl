@@ -1,0 +1,100 @@
+"use client"
+
+import * as React from "react"
+import { cn } from "@/lib/utils"
+
+const Empty = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
+  ({ className, children, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex flex-col items-center justify-center gap-4", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+)
+Empty.displayName = "Empty"
+
+const EmptyHeader = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col items-center gap-2 text-center", className)}
+    {...props}
+  >
+    {children}
+  </div>
+))
+EmptyHeader.displayName = "EmptyHeader"
+
+const EmptyMedia = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & { variant?: "default" | "icon" }
+>(({ className, variant = "default", children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "flex shrink-0 items-center justify-center rounded-full",
+      variant === "icon" && "size-12",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+))
+EmptyMedia.displayName = "EmptyMedia"
+
+const EmptyTitle = React.forwardRef<
+  HTMLHeadingElement,
+  React.ComponentProps<"h3">
+>(({ className, children, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn("text-lg font-semibold", className)}
+    {...props}
+  >
+    {children}
+  </h3>
+))
+EmptyTitle.displayName = "EmptyTitle"
+
+const EmptyDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.ComponentProps<"p">
+>(({ className, children, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  >
+    {children}
+  </p>
+))
+EmptyDescription.displayName = "EmptyDescription"
+
+const EmptyContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center gap-2", className)}
+    {...props}
+  >
+    {children}
+  </div>
+))
+EmptyContent.displayName = "EmptyContent"
+
+export {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+}

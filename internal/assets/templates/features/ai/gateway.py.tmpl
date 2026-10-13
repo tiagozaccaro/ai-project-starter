@@ -1,41 +1,134 @@
-"""AI gateway router for {% .ProjectName%}."""
+"""AI gateway router for {% .ProjectName%}.
 
-from fastapi import APIRouter
+Provides REST endpoints for completions, streaming, and agent execution
+using Pydantic AI with OpenAI-compatible APIs.
+"""
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from typing import AsyncIterator
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
 
-from app.ai.provider import CompletionRequest, get_provider
+from app.ai.provider import (
+    CompletionRequest,
+    CompletionResponse,
+    complete,
+    stream_complete,
+    create_agent,
+)
 
 router = APIRouter()
 
 
-class CompletionPayload(BaseModel):
-    """Request body for completions."""
+class AgentRunRequest(BaseModel):
+    """Request to run an agent."""
 
-    prompt: str = Field(..., min_length=1)
+    system_prompt: str = Field(..., min_length=1)
+    user_input: str = Field(..., min_length=1)
     model: str = "gpt-4o-mini"
-    max_tokens: int = 256
-    temperature: float = 0.7
+    output_schema: dict | None = None  # JSON schema for structured output
 
 
-class CompletionResult(BaseModel):
-    """Response body for completions."""
+class AgentRunResponse(BaseModel):
+    """Response from agent execution."""
 
-    text: str
+    output: str | dict
     model: str
-    provider: str
+    usage: dict | None = None
 
 
-@router.post("/completions", response_model=CompletionResult)
-async def create_completion(payload: CompletionPayload) -> CompletionResult:
+class StreamChunk(BaseModel):
+    """Streaming response chunk."""
+
+    delta: str
+    done: bool = False
+
+
+@router.post("/completions", response_model=CompletionResponse)
+async def create_completion(payload: CompletionRequest) -> CompletionResponse:
     """Generate a completion via the configured AI provider."""
-    provider = get_provider("openai")
-    request = CompletionRequest(
-        prompt=payload.prompt,
+    return await complete(payload)
+
+
+@router.get("/completions/stream")
+async def stream_completion(payload: CompletionRequest):
+    """Stream a completion via Server-Sent Events."""
+    from fastapi.responses import StreamingResponse
+
+    async def event_generator() -> AsyncIterator[str]:
+        async for chunk in stream_complete(payload):
+            yield f"data: {chunk}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/agents/run", response_model=AgentRunResponse)
+async def run_agent(payload: AgentRunRequest) -> AgentRunResponse:
+    """Run a one-shot agent with optional structured output."""
+    try:
+        output_type = None
+        if payload.output_schema:
+            from pydantic import create_model
+            output_type = create_model("AgentOutput", **{
+                k: (v.get("type", str), ...) for k, v in payload.output_schema.get("properties", {}).items()
+            })
+
+        agent = create_agent(
+            system_prompt=payload.system_prompt,
+            model=payload.model,
+            output_type=output_type,
+        )
+
+        result = await agent.run(payload.user_input)
+
+        return AgentRunResponse(
+            output=result.data if output_type else result.data,
+            model=payload.model,
+            usage=result.usage().model_dump() if result.usage() else None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agents/run/stream")
+async def run_agent_stream(payload: AgentRunRequest):
+    """Run an agent with streaming response."""
+    from fastapi.responses import StreamingResponse
+
+    async def event_generator() -> AsyncIterator[str]:
+        agent = create_agent(
+            system_prompt=payload.system_prompt,
+            model=payload.model,
+        )
+
+        async with agent.run_stream(payload.user_input) as result:
+            async for chunk in result.stream_text(delta=True):
+                yield f"data: {chunk}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+# Pre-built agent endpoints
+@router.post("/agents/code", response_model=AgentRunResponse)
+async def run_code_agent(payload: AgentRunRequest) -> AgentRunResponse:
+    """Run a code generation agent."""
+    agent = create_agent(
+        system_prompt="You are an expert software engineer. Write clean, tested, production-ready code. Always include tests.",
         model=payload.model,
-        max_tokens=payload.max_tokens,
-        temperature=payload.temperature,
     )
-    result = await provider.complete(request)
-    return CompletionResult(
-        text=result.text, model=result.model, provider=result.provider
+    result = await agent.run(payload.user_input)
+    return AgentRunResponse(output=result.data, model=payload.model)
+
+
+@router.post("/agents/research", response_model=AgentRunResponse)
+async def run_research_agent(payload: AgentRunRequest) -> AgentRunResponse:
+    """Run a research agent."""
+    agent = create_agent(
+        system_prompt="You are a thorough researcher. Use tools to gather information and provide comprehensive answers with citations.",
+        model=payload.model,
     )
+    result = await agent.run(payload.user_input)
+    return AgentRunResponse(output=result.data, model=payload.model)

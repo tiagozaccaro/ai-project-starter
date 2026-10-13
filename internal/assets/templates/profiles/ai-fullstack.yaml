@@ -1,12 +1,12 @@
 name: ai-fullstack
 description: Fullstack with AI integration
 schemaVersion: 2
-generatorVersion: "1.0.0"
+generatorVersion: '1.0.0'
 profile: ai-fullstack
 applications:
   web: true
   api: true
-  mobile: false
+  mobile: true
 database:
   type: postgresql
   architecture: fastapi
@@ -18,3 +18,6 @@ features:
   ai: true
   database.migrations: true
   testing: true
+  github: true
+  vscode: true
+  speckit: true

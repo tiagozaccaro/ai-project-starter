@@ -1,7 +1,7 @@
 name: fullstack
 description: Next.js web + FastAPI backend
 schemaVersion: 2
-generatorVersion: "1.0.0"
+generatorVersion: '1.0.0'
 profile: fullstack
 applications:
   web: true

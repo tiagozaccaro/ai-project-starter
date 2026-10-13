@@ -1,0 +1,167 @@
+"""Common tools for Pydantic AI agents in {% .ProjectName%}.
+
+These tools can be used by agents for code generation, research, file operations, etc.
+"""
+
+from pydantic import BaseModel, Field
+from pydantic_ai import RunContext
+from typing import Any
+import httpx
+import json
+import os
+from pathlib import Path
+
+
+class FileReadInput(BaseModel):
+    path: str = Field(description="Path to the file to read")
+
+
+class FileWriteInput(BaseModel):
+    path: str = Field(description="Path to write the file")
+    content: str = Field(description="Content to write")
+
+
+class FileListInput(BaseModel):
+    path: str = Field(description="Directory path to list", default=".")
+
+
+class WebSearchInput(BaseModel):
+    query: str = Field(description="Search query")
+    max_results: int = Field(default=5, description="Maximum results to return")
+
+
+class CodeExecInput(BaseModel):
+    code: str = Field(description="Python code to execute")
+    timeout: int = Field(default=30, description="Execution timeout in seconds")
+
+
+async def read_file(ctx: RunContext[None], input: FileReadInput) -> str:
+    """Read a file from the filesystem."""
+    try:
+        path = Path(input.path)
+        if not path.exists():
+            return f"Error: File not found: {input.path}"
+        return path.read_text()
+    except Exception as e:
+        return f"Error reading file: {e}"
+
+
+async def write_file(ctx: RunContext[None], input: FileWriteInput) -> str:
+    """Write a file to the filesystem."""
+    try:
+        path = Path(input.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(input.content)
+        return f"Successfully wrote {len(input.content)} bytes to {input.path}"
+    except Exception as e:
+        return f"Error writing file: {e}"
+
+
+async def list_files(ctx: RunContext[None], input: FileListInput) -> str:
+    """List files in a directory."""
+    try:
+        path = Path(input.path)
+        if not path.exists():
+            return f"Error: Directory not found: {input.path}"
+        files = []
+        for item in path.iterdir():
+            files.append(f"{'DIR' if item.is_dir() else 'FILE'} {item.name}")
+        return "\n".join(files)
+    except Exception as e:
+        return f"Error listing files: {e}"
+
+
+async def web_search(ctx: RunContext[None], input: WebSearchInput) -> str:
+    """Search the web using a search API."""
+    try:
+        # This would integrate with a real search API (SerpAPI, Brave, etc.)
+        # For now, return a placeholder
+        return f"Web search for: {input.query} (max {input.max_results} results) - implement with your search API key"
+    except Exception as e:
+        return f"Error searching web: {e}"
+
+
+async def execute_code(ctx: RunContext[None], input: CodeExecInput) -> str:
+    """Execute Python code in a sandbox."""
+    # WARNING: Only use in trusted environments!
+    # For production, use a proper sandbox like e2b, Daytona, or similar
+    try:
+        import subprocess
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(input.code)
+            f.flush()
+            result = subprocess.run(
+                ["python", f.name],
+                capture_output=True,
+                text=True,
+                timeout=input.timeout,
+            )
+        os.unlink(f.name)
+
+        output = result.stdout
+        if result.stderr:
+            output += f"\nSTDERR:\n{result.stderr}"
+        if result.returncode != 0:
+            output += f"\nExit code: {result.returncode}"
+        return output
+    except subprocess.TimeoutExpired:
+        return "Error: Code execution timed out"
+    except Exception as e:
+        return f"Error executing code: {e}"
+
+
+# Tool collections for different agent types
+def get_code_tools() -> list:
+    """Get tools for code generation agents."""
+    return [
+        read_file,
+        write_file,
+        list_files,
+        execute_code,
+    ]
+
+
+def get_research_tools() -> list:
+    """Get tools for research agents."""
+    return [
+        web_search,
+        read_file,
+        write_file,
+    ]
+
+
+def get_general_tools() -> list:
+    """Get tools for general-purpose agents."""
+    return [
+        read_file,
+        write_file,
+        list_files,
+        web_search,
+    ]
+
+
+# Example structured output models
+class CodeFile(BaseModel):
+    """A code file with path and content."""
+
+    path: str
+    content: str
+    language: str = "python"
+
+
+class CodeGenerationOutput(BaseModel):
+    """Structured output for code generation."""
+
+    files: list[CodeFile]
+    explanation: str
+    tests: list[CodeFile] = []
+
+
+class ResearchOutput(BaseModel):
+    """Structured output for research."""
+
+    summary: str
+    sources: list[str]
+    key_findings: list[str]

@@ -1,0 +1,111 @@
+"use client"
+
+import * as React from "react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+
+const InputGroup = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
+  ({ className, children, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("flex w-full items-center", className)}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+)
+InputGroup.displayName = "InputGroup"
+
+const InputGroupAddon = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    align?: "inline-start" | "inline-end" | "block-start" | "block-end"
+  }
+>(({ className, align = "inline-start", children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "flex items-center",
+      align === "inline-start" && "order-first",
+      align === "inline-end" && "order-last",
+      align === "block-start" && "order-first w-full",
+      align === "block-end" && "order-last w-full",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+)
+InputGroupAddon.displayName = "InputGroupAddon"
+
+const InputGroupButton = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<"button"> & {
+    size?: "xs" | "icon-xs" | "sm" | "icon-sm"
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+  }
+>(({ className, size = "xs", variant = "ghost", children, ...props }, ref) => (
+  <Button
+    ref={ref}
+    size={size}
+    variant={variant}
+    className={cn("h-8 w-8", className)}
+    {...props}
+  >
+    {children}
+  </Button>
+))
+InputGroupButton.displayName = "InputGroupButton"
+
+const InputGroupInput = React.forwardRef<
+  HTMLInputElement,
+  React.ComponentProps<"input">
+>(({ className, ...props }, ref) => (
+  <Input
+    ref={ref}
+    className={cn("flex-1 min-w-0", className)}
+    data-slot="input-group-control"
+    {...props}
+  />
+))
+InputGroupInput.displayName = "InputGroupInput"
+
+const InputGroupTextarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentProps<"textarea">
+>(({ className, ...props }, ref) => (
+  <Textarea
+    ref={ref}
+    className={cn("flex-1 min-w-0", className)}
+    data-slot="input-group-control"
+    {...props}
+  />
+))
+InputGroupTextarea.displayName = "InputGroupTextarea"
+
+const InputGroupText = React.forwardRef<
+  HTMLSpanElement,
+  React.ComponentProps<"span">
+>(({ className, children, ...props }, ref) => (
+  <span
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  >
+    {children}
+  </span>
+))
+InputGroupText.displayName = "InputGroupText"
+
+export {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupTextarea,
+  InputGroupText,
+}

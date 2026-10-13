@@ -1,0 +1,15 @@
+name: mobile
+description: Flutter mobile only
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: mobile
+applications:
+  web: false
+  api: false
+  mobile: true
+database:
+  type: none
+  architecture: fastapi
+features:
+  database.migrations: false
+  testing: true

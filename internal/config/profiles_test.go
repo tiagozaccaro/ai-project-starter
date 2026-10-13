@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestProfileExists(t *testing.T) {
-	for _, name := range []string{ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileAIFullstack, ProfileCustom} {
+	for _, name := range []string{ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileMobile, ProfileAIFullstack, ProfileCustom} {
 		if !ProfileExists(name) {
 			t.Errorf("expected profile %q to exist", name)
 		}
@@ -15,7 +15,7 @@ func TestProfileExists(t *testing.T) {
 
 func TestProfilesOrder(t *testing.T) {
 	profiles := Profiles()
-	if len(profiles) != 5 {
+	if len(profiles) != 6 {
 		t.Fatalf("expected 5 profiles, got %d", len(profiles))
 	}
 	if profiles[0].Name != ProfileFullstack {
@@ -71,6 +71,22 @@ func TestDefaultProfileConfigFrontend(t *testing.T) {
 	}
 }
 
+func TestDefaultProfileConfigMobile(t *testing.T) {
+	cfg, ok := DefaultProfileConfig(ProfileMobile)
+	if !ok {
+		t.Fatal("expected mobile profile to exist")
+	}
+	if cfg.Applications.Web || cfg.Applications.API || !cfg.Applications.Mobile {
+		t.Errorf("expected mobile only, got %+v", cfg.Applications)
+	}
+	if cfg.Database.Type != "none" {
+		t.Errorf("expected no database, got %q", cfg.Database.Type)
+	}
+	if cfg.Features.Login {
+		t.Error("mobile profile should not include login (no auth backend)")
+	}
+}
+
 func TestDefaultProfileConfigUnknown(t *testing.T) {
 	if _, ok := DefaultProfileConfig("unknown"); ok {
 		t.Error("expected unknown profile to return false")
@@ -112,7 +128,7 @@ func TestProfilesData(t *testing.T) {
 		t.Fatal("expected Profiles to return at least one profile")
 	}
 	// Verify that the profiles match the expected names (order is stable)
-	expectedNames := []string{ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileAIFullstack, ProfileCustom}
+	expectedNames := []string{ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileMobile, ProfileAIFullstack, ProfileCustom}
 	if len(profiles) != len(expectedNames) {
 		t.Fatalf("expected %d profiles, got %d", len(expectedNames), len(profiles))
 	}
