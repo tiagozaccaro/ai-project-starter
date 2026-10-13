@@ -20,6 +20,7 @@ const (
 	ProfileFullstack   = "fullstack"
 	ProfileBackend     = "backend"
 	ProfileFrontend    = "frontend"
+	ProfileMobile      = "mobile"
 	ProfileAIFullstack = "ai-fullstack"
 	ProfileCustom      = "custom"
 )
@@ -196,8 +197,8 @@ func (c *ProjectConfig) Validate() *ConfigValidationError {
 	}
 	if !isValidProfile(c.Profile) {
 		errs.Add("INVALID_PROFILE",
-			fmt.Sprintf("profile must be one of: %s, %s, %s, %s, %s",
-				ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileAIFullstack, ProfileCustom),
+			fmt.Sprintf("profile must be one of: %s, %s, %s, %s, %s, %s",
+				ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileMobile, ProfileAIFullstack, ProfileCustom),
 			"profile", "Set profile to a valid profile name")
 	}
 	if !isValidProjectName(c.ProjectName) {
@@ -377,7 +378,7 @@ func (c *ProjectConfig) TestingEnabled() bool {
 
 func isValidProfile(p string) bool {
 	switch p {
-	case ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileAIFullstack, ProfileCustom:
+	case ProfileFullstack, ProfileBackend, ProfileFrontend, ProfileMobile, ProfileAIFullstack, ProfileCustom:
 		return true
 	}
 	return false

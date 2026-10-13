@@ -1,5 +1,9 @@
 "use client"
 
+{% if .GenerateAuth %}
+import { useRouter } from "next/navigation"
+{% end %}
+
 import {
   Avatar,
   AvatarFallback,
@@ -21,6 +25,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
+{% if .GenerateAuth %}
+import { logout } from "@/lib/auth"
+{% end %}
 
 export function NavUser({
   user,
@@ -32,6 +39,9 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  {% if .GenerateAuth %}
+  const router = useRouter()
+  {% end %}
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -94,9 +104,19 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOutIcon
-              />
+            <DropdownMenuItem
+              {% if .GenerateAuth %}
+              onClick={async () => {
+                try {
+                  await logout()
+                } catch (err) {
+                  console.error(err)
+                }
+                router.push("/login")
+              }}
+              {% end %}
+            >
+              <LogOutIcon />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

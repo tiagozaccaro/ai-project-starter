@@ -14,7 +14,7 @@ edac48c13d30608d59f21d2cc6e50644e893d5b0462a0613c97c586f5303d62c  apps/web/jest.
 766e128371e59cf3dc5a98b963bed9c951fa734d0f372e843a2440340d24ac4a  apps/web/pnpm-workspace.yaml
 e32657baf631d7c5f4dc67b4b2ee0ec8e7d5b3c41860e09cddce7c0377cd80bc  apps/web/postcss.config.js
 a8dcfbe6d014ab33adb4be2ccc221313d0bbf5d1d69a06bc08527b66148e849a  apps/web/src/app/dashboard/data.json
-7e61b721980c1c6a2c754dc373459b3ba007c4f0f8e04e30069a6b009d048810  apps/web/src/app/dashboard/page.tsx
+5e67253ba5dadccf1a7ae280516cf5a299725718ccd5c632e995e8ec0b1ab1c6  apps/web/src/app/dashboard/page.tsx
 8bd35070d0c861e130a45211001e3532d51c627ffa7535c6b081de951fd18b7d  apps/web/src/app/globals.css
 6f08f15d9d2b63a18e3a715b243683702691f7aa5c7d3794460f89b31f4d4410  apps/web/src/app/layout.tsx
 3e764384ffa611cf7d2c96c0b13e58ce6a9bd2b8a0563af52579b94d1086ce44  apps/web/src/app/page.test.tsx
@@ -25,9 +25,9 @@ f6b7366be6e7132f4c1a682f6fc5f70535b44087640116c7243a15516b1625c4  apps/web/src/c
 cbee368bbc9da4784c060349cfbebc5aa421d6df73ab101c5402cd559854b2dd  apps/web/src/components/nav-documents.tsx
 72857dca748e1ec5e4df47ed85ecfdaa30c8e471857f19df6ad224c6673a9ad9  apps/web/src/components/nav-main.tsx
 6194e3b3acdec101d096e3446863dd601f61495138965f2b7a05fe8e1c04d74b  apps/web/src/components/nav-secondary.tsx
-6f6ca6132eaba4f50db8afc2540d0dc8ce7dde962a7eaa9977a78d2b1714484f  apps/web/src/components/nav-user.tsx
+7c14b99e224a6e80a73e920d65329415d8fa3c0abea3ea6a4f6420b1b0c1fbb2  apps/web/src/components/nav-user.tsx
 1e5d739062b8be7d2b9248a032076b4d970536d57022663c536c1a2f8b599b80  apps/web/src/components/section-cards.tsx
-bf0255d028e8463a59505b630a43a1d800a76a4868f3ff31acade0b131e7e7c6  apps/web/src/components/site-header.tsx
+421937eabfbba3705c80a582959cb616efd770f1670cbd8284ec1cdb4647e680  apps/web/src/components/site-header.tsx
 bff76087ea9af25c6aa5a5306088dc66e62204a126752c38561736acff00717f  apps/web/src/components/ui/avatar.tsx
 d9fb280e266119c4b62a4c518e63152de27b094c68d3e5f8929d05bfb0c1bc6c  apps/web/src/components/ui/badge.tsx
 cbd2b85e7a0097438855ff1bba8ac0cc3d1229e4c94bda3d52176fd22ea2ac62  apps/web/src/components/ui/breadcrumb.tsx

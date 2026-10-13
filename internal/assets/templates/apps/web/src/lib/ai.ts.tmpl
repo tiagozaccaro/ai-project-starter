@@ -1,0 +1,12 @@
+import type { UIMessage } from "ai"
+
+export function getMessageText(message: UIMessage): string {
+  if (!message.parts) return ""
+
+  const textParts = message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("")
+
+  return textParts
+}

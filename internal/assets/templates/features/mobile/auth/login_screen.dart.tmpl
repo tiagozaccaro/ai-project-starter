@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+{% if eq .AuthProvider "google-oidc" %}
+import '../../services/auth_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+{% endif %}
+{% if eq .AuthProvider "supabase" %}
+import 'package:supabase_flutter/supabase_flutter.dart';
+{% endif %}
 
 /// Authentication screen for the generated mobile app.
 ///
@@ -23,9 +31,32 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
     try {
-      // TODO: integrate the configured auth provider
-      // (google-oidc or supabase) here.
+      {% if eq .AuthProvider "google-oidc" %}
+      final baseUrl = const String.fromEnvironment('API_BASE_URL',
+              defaultValue: 'http://10.0.2.2:8000');
+      final uri = Uri.parse(
+          '$baseUrl/api/v1/auth/google/login?redirect=${Uri.encodeComponent('/login')}&mobile=true');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (mounted) {
+        context.go('/');
+      }
+      {% else if eq .AuthProvider "supabase" %}
+      await Supabase.instance.client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'com.example.app://login-callback',
+      );
+      {% else %}
       await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (mounted) {
+        context.go('/');
+      }
+      {% endif %}
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to sign in: $e')),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);

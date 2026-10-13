@@ -1,0 +1,131 @@
+"use client"
+
+import * as React from "react"
+import { MessageScroller as HeadlessMessageScroller } from "@shadcn/react/message-scroller"
+import { cn } from "@/lib/utils"
+
+export const MessageScrollerProvider = HeadlessMessageScroller.Provider
+
+export const MessageScroller = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, children, ...props }, ref) => (
+  <HeadlessMessageScroller.Root
+    ref={ref}
+    className={cn("relative flex flex-1 flex-col overflow-hidden", className)}
+    {...props}
+  >
+    {children}
+  </HeadlessMessageScroller.Root>
+))
+MessageScroller.displayName = HeadlessMessageScroller.Root.displayName
+
+export const MessageScrollerViewport = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    preserveScrollOnPrepend?: boolean
+    role?: string
+    "aria-label"?: string
+    tabIndex?: number
+  }
+>(({ className, preserveScrollOnPrepend = true, role = "region", "aria-label": ariaLabel = "Messages", tabIndex = 0, ...props }, ref) => (
+  <HeadlessMessageScroller.Viewport
+    ref={ref}
+    className={cn("flex flex-1 flex-col overflow-y-auto", className)}
+    preserveScrollOnPrepend={preserveScrollOnPrepend}
+    role={role}
+    aria-label={ariaLabel}
+    tabIndex={tabIndex}
+    {...props}
+  />
+))
+MessageScrollerViewport.displayName = HeadlessMessageScroller.Viewport.displayName
+
+export const MessageScrollerContent = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    role?: string
+    "aria-relevant"?: string
+    "aria-busy"?: boolean
+    spacerClassName?: string
+  }
+>(({ className, role = "log", "aria-relevant": ariaRelevant = "additions", "aria-busy": ariaBusy, spacerClassName, ...props }, ref) => (
+  <HeadlessMessageScroller.Content
+    ref={ref}
+    className={cn("flex flex-col", className)}
+    role={role}
+    aria-relevant={ariaRelevant}
+    aria-busy={ariaBusy}
+    spacerClassName={spacerClassName}
+    {...props}
+  />
+))
+MessageScrollerContent.displayName = HeadlessMessageScroller.Content.displayName
+
+export const MessageScrollerItem = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
+    messageId: string
+    scrollAnchor?: boolean
+  }
+>(({ className, messageId, scrollAnchor = false, ...props }, ref) => (
+  <HeadlessMessageScroller.Item
+    ref={ref}
+    className={cn("flex w-full", className)}
+    messageId={messageId}
+    scrollAnchor={scrollAnchor}
+    {...props}
+  />
+))
+MessageScrollerItem.displayName = HeadlessMessageScroller.Item.displayName
+
+export const MessageScrollerButton = React.forwardRef<
+  HTMLButtonElement,
+  React.ComponentProps<"button"> & {
+    behavior?: ScrollBehavior
+    direction?: "start" | "end"
+    children?: React.ReactNode
+    render?: React.ReactElement | ((props: React.ComponentProps<"button">) => React.ReactElement)
+  }
+>(({ className, behavior = "smooth", direction = "end", children, render, ...props }, ref) => {
+  const DefaultButton = (
+    <button
+      ref={ref}
+      className={cn(
+        "relative flex items-center justify-center gap-1.5 rounded-full border bg-background px-3 py-1 text-sm font-medium",
+        "transition-opacity",
+        "data-[direction=start]:rotate-180",
+        "data-[active=false]:pointer-events-none data-[active=false]:opacity-0",
+        className
+      )}
+      data-direction={direction}
+      {...props}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M18 15 12 9 6 15" />
+      </svg>
+      <span className="sr-only">Jump to {direction === "start" ? "oldest" : "latest"} message</span>
+    </button>
+  )
+
+  if (render) {
+    return typeof render === "function" ? render({ children: DefaultButton, ...props }) : render
+  }
+
+  return children ?? DefaultButton
+})
+MessageScrollerButton.displayName = HeadlessMessageScroller.Button.displayName
+
+export const useMessageScroller = HeadlessMessageScroller.useMessageScroller
+export const useMessageScrollerScrollable = HeadlessMessageScroller.useMessageScrollerScrollable
+export const useMessageScrollerVisibility = HeadlessMessageScroller.useMessageScrollerVisibility

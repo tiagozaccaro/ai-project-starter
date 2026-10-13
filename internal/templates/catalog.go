@@ -59,6 +59,7 @@ func webTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/web/src/hooks/use-mobile.ts.tmpl", TargetPath: `{% .WebPath "src/hooks/use-mobile.ts"%}`, Condition: `{{ .GenerateWeb }}`},
 		{SourcePath: "templates/apps/web/src/lib/api.ts.tmpl", TargetPath: `{% .WebPath "src/lib/api.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAPI }}`},
 		{SourcePath: "templates/apps/web/src/lib/auth.ts.tmpl", TargetPath: `{% .WebPath "src/lib/auth.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAuth }}`},
+		{SourcePath: "templates/apps/web/src/middleware.ts.tmpl", TargetPath: `{% .WebPath "src/middleware.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAuth }}`},
 		// Supabase Auth client (web).
 		{SourcePath: "templates/features/auth/supabase/supabase_client.ts.tmpl", TargetPath: `{% .WebPath "src/lib/supabase.ts"%}`, Condition: `{{ and .GenerateWeb (eq .AuthProvider "supabase") }}`},
 		// UI components (always generated for web)
@@ -85,6 +86,11 @@ func webTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/web/src/components/ui/toggle-group.tmpl", TargetPath: `{% .WebPath "src/components/ui/toggle-group.tsx"%}`, Condition: `{{ .GenerateWeb }}`},
 		{SourcePath: "templates/apps/web/src/components/ui/toggle.tmpl", TargetPath: `{% .WebPath "src/components/ui/toggle.tsx"%}`, Condition: `{{ .GenerateWeb }}`},
 		{SourcePath: "templates/apps/web/src/components/ui/tooltip.tmpl", TargetPath: `{% .WebPath "src/components/ui/tooltip.tsx"%}`, Condition: `{{ .GenerateWeb }}`},
+		{SourcePath: "templates/apps/web/src/components/ui/empty.tsx.tmpl", TargetPath: `{% .WebPath "src/components/ui/empty.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
+		{SourcePath: "templates/apps/web/src/components/ui/input-group.tsx.tmpl", TargetPath: `{% .WebPath "src/components/ui/input-group.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
+		{SourcePath: "templates/apps/web/src/components/ui/message-scroller.tsx.tmpl", TargetPath: `{% .WebPath "src/components/ui/message-scroller.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
+		{SourcePath: "templates/apps/web/src/components/message-animated.tsx.tmpl", TargetPath: `{% .WebPath "src/components/message-animated.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
+		{SourcePath: "templates/apps/web/src/lib/ai.ts.tmpl", TargetPath: `{% .WebPath "src/lib/ai.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
 		{SourcePath: "templates/apps/web/jest.config.cjs.tmpl", TargetPath: `{% .WebPath "jest.config.cjs"%}`, Condition: `{{ and .GenerateWeb .TestingEnabled }}`},
 		{SourcePath: "templates/apps/web/jest.setup.ts.tmpl", TargetPath: `{% .WebPath "jest.setup.ts"%}`, Condition: `{{ and .GenerateWeb .TestingEnabled }}`},
 		{SourcePath: "templates/apps/web/src/app/page.test.tsx.tmpl", TargetPath: `{% .WebPath "src/app/page.test.tsx"%}`, Condition: `{{ and .GenerateWeb .TestingEnabled }}`},
@@ -136,6 +142,7 @@ func mobileTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/mobile/lib/navigation/user_drawer.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/user_drawer.dart"%}`, Condition: `{{ .GenerateMobile }}`},
 		{SourcePath: "templates/apps/mobile/lib/navigation/drawer_controller.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/drawer_controller.dart"%}`, Condition: `{{ .GenerateMobile }}`},
 		{SourcePath: "templates/apps/mobile/lib/navigation/adaptive_scaffold.dart.tmpl", TargetPath: `{% .MobilePath "lib/navigation/adaptive_scaffold.dart"%}`, Condition: `{{ .GenerateMobile }}`},
+		{SourcePath: "templates/apps/mobile/lib/services/auth_service.dart.tmpl", TargetPath: `{% .MobilePath "lib/services/auth_service.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateAuth }}`},
 		{SourcePath: "templates/apps/mobile/test/navigation_test.dart.tmpl", TargetPath: `{% .MobilePath "test/navigation_test.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
 		{SourcePath: "templates/apps/mobile/test/widget_test.dart.tmpl", TargetPath: `{% .MobilePath "test/widget_test.dart"%}`, Condition: `{{ and .GenerateMobile .TestingEnabled }}`},
 		{SourcePath: "templates/apps/mobile/AGENTS.md.tmpl", TargetPath: `{% .MobilePath "AGENTS.md"%}`, Condition: `{{ and .GenerateMobile .GenerateSpeckit }}`},
@@ -206,6 +213,11 @@ func featureTemplates() []TemplateManifest {
 		// AI gateway (FastAPI).
 		{SourcePath: "templates/features/ai/provider.py.tmpl", TargetPath: `{% .APIPath "app/ai/provider.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
 		{SourcePath: "templates/features/ai/gateway.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/ai.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
+		{SourcePath: "templates/features/ai/tools.py.tmpl", TargetPath: `{% .APIPath "app/ai/tools.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
+		// AI chat (Web - Vercel AI SDK).
+		{SourcePath: "templates/features/ai/app/api/ai/chat/route.tmpl", TargetPath: `{% .WebPath "src/app/api/ai/chat/route.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateAI }}`},
+		{SourcePath: "templates/features/dashboard/components/ai-chat.tmpl", TargetPath: `{% .WebPath "src/components/ai-chat.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateDashboard .GenerateAI }}`},
+		{SourcePath: "templates/features/dashboard/components/ai-chat-drawer.tmpl", TargetPath: `{% .WebPath "src/components/ai-chat-drawer.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateDashboard .GenerateAI }}`},
 		// Workers.
 		{SourcePath: "templates/features/workers/worker.py.tmpl", TargetPath: `{% .APIPath "app/worker.py"%}`, Condition: `{{ and .GenerateAPI .GenerateWorkers }}`},
 		{SourcePath: "templates/features/workers/queue.py.tmpl", TargetPath: `{% .APIPath "app/queue.py"%}`, Condition: `{{ and .GenerateAPI .GenerateWorkers }}`},

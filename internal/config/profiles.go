@@ -26,6 +26,7 @@ var profileOrder = []string{
 	ProfileFullstack,
 	ProfileBackend,
 	ProfileFrontend,
+	ProfileMobile,
 	ProfileAIFullstack,
 	ProfileCustom,
 }

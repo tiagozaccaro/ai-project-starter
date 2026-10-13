@@ -27,7 +27,7 @@ func runWizard() (*config.ProjectConfig, error) {
 	var layout string
 
 	profileOptions := huh.NewOptions(
-		"fullstack", "backend", "frontend", "ai-fullstack", "custom")
+		"fullstack", "backend", "frontend", "mobile", "ai-fullstack", "custom")
 
 	layoutOptions := huh.NewOptions("monorepo", "flat")
 

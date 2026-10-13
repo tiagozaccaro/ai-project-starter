@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+{% if .GenerateAuth and eq .AuthProvider "supabase" %}
+import 'package:supabase_flutter/supabase_flutter.dart';
+{% endif %}
 
 import 'navigation/adaptive_scaffold.dart';
 import 'navigation/navigation_state.dart';
+{% if .GenerateAuth %}
+import 'features/auth/login_screen.dart';
+{% endif %}
 
 /// Generated app entry point. Navigation model per Constitution X:
 /// bottom navigation (3-5 destinations), left drawer opened only by
@@ -50,8 +56,25 @@ class {% toPascal .ProjectName %}App extends StatelessWidget {
 /// App router. Each destination is a StatefulShellBranch so tab
 /// switches preserve per-tab state (navigation rule 6).
 final router = GoRouter(
-  initialLocation: appDestinations.first.route,
-  routes: [
+  initialLocation: {% if .GenerateAuth %}'/login'{% else %}appDestinations.first.route{% endif %},
+  redirect: (context, state) async {
+    {% if not .GenerateAuth %}
+    return null;
+    {% else %}
+    final isLoggedIn = false; // TODO: implement session check
+    final loggingIn = state.matchedLocation == '/login';
+    if (!isLoggedIn && !loggingIn) return '/login';
+    if (isLoggedIn && loggingIn) return appDestinations.first.route;
+    return null;
+    {% endif %}
+  },
+    {% if .GenerateAuth %}
+    GoRoute(
+      path: '/login',
+      name: 'login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    {% endif %}
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => AdaptiveScaffold(
         title: '{% .ProjectName %}',

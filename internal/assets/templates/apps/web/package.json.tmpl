@@ -34,7 +34,9 @@
     "zod": "^4.6.6"{% if and .GenerateWeb .GenerateAPI%},
     "@tanstack/react-query": "^5.51.1"{% end%}{% if .GenerateCharts%},
     "recharts": "^3.8.0"{% end%}{% if .GenerateGraphs%},
-    "@xyflow/react": "^12.3.0"{% end%}
+    "@xyflow/react": "^12.3.0"{% end%}{% if .GenerateAI%},
+    "ai": "^4.0.0",
+    "@shadcn/helpers": "^0.1.0"{% end%}
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
