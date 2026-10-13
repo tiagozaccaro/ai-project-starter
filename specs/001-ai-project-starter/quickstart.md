@@ -8,7 +8,7 @@
 ## Prerequisites
 
 ### System Requirements
-- **Python 3.11+** with `uv` (for building generator from source)
+- **Go 1.22+** (for building the generator from source)
 - **Node.js ≥20** (for generated web projects)
 - **Python ≥3.11** (for generated API projects)
 - **Flutter ≥3.19** (for generated mobile projects)
@@ -22,7 +22,7 @@
 
 **From source**:
 ```bash
-git clone https://github.com/your-org/ai-project-starter
+git clone https://github.com/tiagozaccaro/ai-project-starter
 cd ai-project-starter
 go build -o ai-project-starter ./cmd/ai-project-starter
 ./ai-project-starter --version
@@ -31,11 +31,11 @@ go build -o ai-project-starter ./cmd/ai-project-starter
 **Via package managers** (after release):
 ```bash
 # Binary download (recommended) - static binary, no runtime deps
-curl -fsSL https://github.com/your-org/ai-project-starter/releases/latest/download/ai-project-starter-linux-amd64.tar.gz | tar xz
+curl -fsSL https://github.com/tiagozaccaro/ai-project-starter/releases/latest/download/ai-project-starter-linux-amd64.tar.gz | tar xz
 sudo mv ai-project-starter /usr/local/bin/
 
 # Homebrew
-brew tap your-org/tap
+brew tap tiagozaccaro/tap
 brew install ai-project-starter
 
 # npm wrapper (downloads precompiled binary)
@@ -393,7 +393,8 @@ database:
   type: "postgresql"
   architecture: "supabase-first"
 features:
-  auth: "supabase"
+  auth:
+    - "supabase"
   testing: true
 EOF
 ./ai-project-starter generate --config /tmp/supabase-config.yaml --dest ./test-supabase --non-interactive
@@ -411,7 +412,8 @@ database:
   type: "postgresql"
   architecture: "hybrid"
 features:
-  auth: "supabase"
+  auth:
+    - "supabase"
   testing: true
 EOF
 ./ai-project-starter generate --config /tmp/hybrid-config.yaml --dest ./test-hybrid --non-interactive

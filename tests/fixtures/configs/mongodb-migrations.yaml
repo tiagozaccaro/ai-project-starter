@@ -1,0 +1,12 @@
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: custom
+projectName: "mongodb-migrations"
+applications:
+  api: true
+database:
+  type: mongodb
+  architecture: fastapi
+features:
+  database.migrations: true
+  testing: true

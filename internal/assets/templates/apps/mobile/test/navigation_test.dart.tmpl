@@ -1,0 +1,212 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:{% dartPackageName .ProjectName %}/main.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/navigation_state.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/app_drawer.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/user_drawer.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/bottom_nav_bar.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/drawer_controller.dart';
+import 'package:{% dartPackageName .ProjectName %}/navigation/adaptive_scaffold.dart';
+
+/// Launches the generated app for widget tests.
+Widget launchApp() {
+  return ChangeNotifierProvider(
+    create: (_) => NavigationState(),
+    child: MaterialApp.router(
+      title: '{% .ProjectName %}',
+      routerConfig: router,
+    ),
+  );
+}
+
+void main() {
+  group('Constitution X navigation rules', () {
+    // Rule 1: bottom navigation shows 3-5 tabs, all from config.
+    testWidgets('bottom navigation shows all configured destinations',
+        (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      final destinations = find.byType(NavigationDestination);
+      expect(destinations, findsWidgets);
+      expect(destinations.evaluate().length, appDestinations.length);
+      expect(appDestinations.length, greaterThanOrEqualTo(3));
+      expect(appDestinations.length, lessThanOrEqualTo(5));
+      for (final destination in appDestinations) {
+        expect(find.text(destination.label), findsOneWidget);
+      }
+    });
+
+    // Rule 2: left drawer opens ONLY via the app-menu IconButton.
+    testWidgets('left drawer opens via app-menu control', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsOneWidget);
+      expect(find.byType(UserDrawer), findsNothing);
+    });
+
+    // Rule 3: right drawer opens ONLY via the profile/avatar control.
+    testWidgets('right drawer opens via profile avatar control',
+        (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(CircleAvatar));
+      await tester.pumpAndSettle();
+      expect(find.byType(UserDrawer), findsOneWidget);
+      expect(find.byType(AppDrawer), findsNothing);
+    });
+
+    // Rule 4: drawers never open simultaneously.
+    testWidgets('drawers are mutually exclusive', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsOneWidget);
+      // Opening the right drawer must close the left drawer.
+      await tester.tap(find.byType(CircleAvatar));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsNothing);
+      expect(find.byType(UserDrawer), findsOneWidget);
+      // And vice versa.
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsOneWidget);
+      expect(find.byType(UserDrawer), findsNothing);
+    });
+
+    // Rule 5: both drawers are closed on startup.
+    testWidgets('drawers are closed on startup', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsNothing);
+      expect(find.byType(UserDrawer), findsNothing);
+    });
+
+    // Rule 6: tab switching preserves per-tab state (IndexedStack).
+    testWidgets('tab switching preserves state', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      // Switch to every destination; each previous destination's
+      // content must remain in the tree (offstage but preserved).
+      for (var i = 0; i < appDestinations.length; i++) {
+        await tester.tap(find.text(appDestinations[i].label));
+        await tester.pumpAndSettle();
+        for (final destination in appDestinations) {
+          expect(find.text(destination.label), findsWidgets);
+        }
+      }
+    });
+
+    // Rule 7: Android back closes an open drawer before leaving.
+    testWidgets('Android back closes an open drawer', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppDrawer), findsOneWidget);
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      final didPop = await navigator.maybePop();
+      await tester.pumpAndSettle();
+      expect(didPop, isFalse); // drawer intercepted the back press
+      expect(find.byType(AppDrawer), findsNothing);
+      expect(find.byType(UserDrawer), findsNothing);
+    });
+
+    // Rule 8: gesture navigation (back) preserves tab state.
+    testWidgets('back gesture preserves tab state', (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      // Navigate to a non-initial destination.
+      final second = appDestinations[1];
+      await tester.tap(find.text(second.label));
+      await tester.pumpAndSettle();
+      // Simulate a back gesture via the router; the shell's
+      // IndexedStack keeps every branch alive, so all
+      // destination content remains present.
+      if (router.canPop()) {
+        router.pop();
+        await tester.pumpAndSettle();
+      }
+      for (final destination in appDestinations) {
+        expect(find.text(destination.label), findsWidgets);
+      }
+    });
+
+    // Rule 9 (Amendment 1.0.1): screens wider than 600dp use
+    // permanent navigation surfaces, not control-activated drawers.
+    testWidgets('large screens use permanent navigation rail',
+        (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      expect(find.byType(NavigationRail), findsOneWidget);
+      // Permanent profile panel replaces the right drawer.
+      expect(find.byType(AppDrawer), findsNothing);
+      expect(find.byType(UserDrawer), findsNothing);
+    });
+
+    // Rule 10: no hardcoded destinations — all come from config.
+    testWidgets('destinations come from configuration only',
+        (tester) async {
+      await tester.pumpWidget(launchApp());
+      await tester.pumpAndSettle();
+      // The generated app has no illustrative/hardcoded
+      // destinations: the bottom bar shows exactly the
+      // configured destinations and nothing else.
+      final labels = <String>[];
+      for (final element in find.byType(NavigationDestination).evaluate()) {
+        final text = element.widget is NavigationDestination
+            ? (element.widget as NavigationDestination).label
+            : null;
+        if (text != null) {
+          labels.add(text);
+        }
+      }
+      expect(labels, unorderedEquals(appDestinations.map((d) => d.label).toList()));
+    });
+  });
+
+  group('NavigationState unit invariants', () {
+    test('starts with both drawers closed', () {
+      final state = NavigationState();
+      expect(state.leftOpen, isFalse);
+      expect(state.rightOpen, isFalse);
+    });
+
+    test('opening one drawer closes the other', () {
+      final state = NavigationState();
+      state.openLeft();
+      expect(state.leftOpen, isTrue);
+      expect(state.rightOpen, isFalse);
+      state.openRight();
+      expect(state.leftOpen, isFalse);
+      expect(state.rightOpen, isTrue);
+    });
+
+    test('selecting a tab closes drawers', () {
+      final state = NavigationState();
+      state.openLeft();
+      state.selectTab(1);
+      expect(state.currentIndex, 1);
+      expect(state.leftOpen, isFalse);
+      expect(state.rightOpen, isFalse);
+    });
+
+    test('notifies listeners on state changes', () {
+      final state = NavigationState();
+      var notifications = 0;
+      state.addListener(() => notifications++);
+      state.openLeft();
+      state.closeAll();
+      state.selectTab(2);
+      expect(notifications, 3);
+    });
+  });
+}

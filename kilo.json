@@ -1,0 +1,19 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "bash": {
+      "go build*": "allow",
+      "go test*": "allow",
+      "go vet*": "allow",
+      "gofmt*": "allow",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "gh issue*": "allow",
+      "*": "ask"
+    },
+    "edit": {
+      "*": "ask"
+    }
+  }
+}

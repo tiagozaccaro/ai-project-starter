@@ -7,12 +7,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/your-org/ai-project-starter/internal/config"
-	"github.com/your-org/ai-project-starter/internal/dependencies"
-	"github.com/your-org/ai-project-starter/internal/filesystem"
-	"github.com/your-org/ai-project-starter/internal/setup"
-	"github.com/your-org/ai-project-starter/internal/summary"
-	"github.com/your-org/ai-project-starter/internal/templates"
+	"github.com/tiagozaccaro/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
+	"github.com/tiagozaccaro/ai-project-starter/internal/setup"
+	"github.com/tiagozaccaro/ai-project-starter/internal/summary"
+	"github.com/tiagozaccaro/ai-project-starter/internal/templates"
 )
 
 // GenerateOptions holds the options for the generate command.
@@ -134,11 +134,20 @@ func Generate(opts GenerateOptions) error {
 }
 
 // loadConfig resolves the configuration source: --config file,
-// --profile defaults, or the interactive wizard.
+// --profile defaults, the AI_PROJECT_STARTER_CONFIG env var,
+// or the interactive wizard. Env-var field overrides are
+// applied last (flags > env > config file).
 func loadConfig(opts GenerateOptions) (*config.ProjectConfig, error) {
+	configPath := opts.ConfigPath
+	if configPath == "" {
+		if envPath, _ := config.EnvConfigSource(); envPath != "" {
+			configPath = envPath
+		}
+	}
+
 	switch {
-	case opts.ConfigPath != "":
-		result, err := config.LoadFromFile(opts.ConfigPath)
+	case configPath != "":
+		result, err := config.LoadFromFile(configPath)
 		if err != nil {
 			return nil, ValidationError(err.Error())
 		}
@@ -152,6 +161,7 @@ func loadConfig(opts GenerateOptions) (*config.ProjectConfig, error) {
 		if opts.Layout != "" {
 			cfg.Layout = opts.Layout
 		}
+		config.ApplyEnvOverrides(cfg)
 		return cfg, nil
 
 	case opts.Profile != "":
@@ -180,6 +190,7 @@ func loadConfig(opts GenerateOptions) (*config.ProjectConfig, error) {
 		if opts.NonInteractive && cfg.ProjectName == "" {
 			return nil, ValidationError("project name is required in non-interactive mode; use --name")
 		}
+		config.ApplyEnvOverrides(&cfg)
 		return &cfg, nil
 
 	case opts.Interactive || (opts.ConfigPath == "" && opts.Profile == "" && !opts.NonInteractive):

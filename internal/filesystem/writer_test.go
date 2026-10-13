@@ -124,3 +124,74 @@ func TestListDestinationFiles(t *testing.T) {
 		t.Errorf("expected 2 files, got %d: %v", len(files), files)
 	}
 }
+
+// TestDestinationEmpty tests the DestinationEmpty function.
+func TestDestinationEmpty(t *testing.T) {
+	// Non-existent directory should be considered empty.
+	empty, err := DestinationEmpty(filepath.Join(t.TempDir(), "does-not-exist"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !empty {
+		t.Error("expected missing destination to be empty")
+	}
+
+	// Empty directory should be empty.
+	dir := t.TempDir()
+	empty, err = DestinationEmpty(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !empty {
+		t.Error("expected empty dir to be empty")
+	}
+
+	// Non-empty directory should not be empty.
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	empty, err = DestinationEmpty(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if empty {
+		t.Error("expected non-empty dir to not be empty")
+	}
+}
+
+// TestDestinationEmptyNotDir tests that DestinationEmpty returns false
+// when the destination exists but is not a directory.
+func TestDestinationEmptyNotDir(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file.txt")
+	if err := os.WriteFile(file, []byte("content"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	empty, err := DestinationEmpty(file)
+	if err == nil {
+		t.Fatal("expected error for non-directory destination")
+	}
+	if empty {
+		t.Error("expected false for non-directory destination")
+	}
+}
+
+// TestWriteFileError tests error conditions in writeFile.
+func TestWriteFileError(t *testing.T) {
+	// Create a writer with a destination that we'll make unwritable.
+	dir := t.TempDir()
+	w := NewWriter(dir, false)
+
+	// Try to write to a subdirectory we'll make read-only.
+	subdir := filepath.Join(dir, "readonly")
+	if err := os.MkdirAll(subdir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	file := File{TargetPath: "readonly/out.txt", Content: []byte("test")}
+	if err := w.writeFile(file); err == nil {
+		t.Fatal("expected error writing to read-only directory")
+	}
+	// Clean up so the temp dir can be removed.
+	if err := os.Chmod(subdir, 0o755); err != nil {
+		t.Logf("warning: failed to chmod readonly dir: %v", err)
+	}
+}

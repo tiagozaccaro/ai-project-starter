@@ -1,0 +1,15 @@
+/// Flutter test configuration for {% .ProjectName%}.
+///
+/// flutter_test loads this file automatically when it is
+/// present in test/. Use it to configure golden/image
+/// testing and shared test bindings.
+import 'package:flutter_test/flutter_test.dart';
+
+/// Called automatically by flutter_test before any test runs.
+Future<void> flutterTestConfigure() async {
+  // Golden test configuration (uncomment to enable):
+  // goldenFileComparator = LocalFileComparator(
+  //   Directory('test/goldens'),
+  // );
+  testWidgetsFlutterBinding.ensureInitialized();
+}

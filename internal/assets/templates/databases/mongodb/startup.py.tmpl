@@ -1,0 +1,19 @@
+"""Application startup hooks for {% .ProjectName%} (MongoDB).
+
+Registers Beanie document models and ensures indexes exist
+before the API starts serving traffic.
+"""
+
+from beanie import init_beanie
+
+from app.core.config import get_settings
+from app.database import get_mongo_client
+from app.models.user import User
+
+
+async def init_mongodb() -> None:
+    """Initialize Beanie with the configured document models."""
+    await init_beanie(
+        database=get_mongo_client()[get_settings().database_name],
+        document_models=[User],
+    )

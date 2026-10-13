@@ -1,0 +1,41 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'navigation_state.dart';
+
+/// Right drawer: profile and settings.
+///
+/// Constitution X: opened ONLY by the profile/avatar control (the
+/// AppBar avatar in DrawerController) — never used as the main
+/// application navigation. Never open simultaneously with the left
+/// drawer; closed on startup. On screens wider than 600dp a
+/// permanent right panel replaces this drawer (Amendment 1.0.1).
+class UserDrawer extends StatelessWidget {
+  const UserDrawer({super.key, required this.items});
+
+  final List<DrawerItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.read<NavigationState>();
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const DrawerHeader(
+          decoration: BoxDecoration(color: Colors.blue),
+          child: CircleAvatar(child: Icon(Icons.account_circle)),
+        ),
+        for (final item in items)
+          ListTile(
+            leading: Icon(item.icon),
+            title: Text(item.label),
+            onTap: () {
+              state.closeAll();
+              context.go(item.route);
+            },
+          ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,43 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'navigation_state.dart';
+
+/// Bottom navigation bar with the configured destinations
+/// (3-5 items, Constitution X). The primary navigation for the
+/// app; tab switches preserve per-tab state via the
+/// StatefulShellRoute indexed stack.
+class AppBottomNavBar extends StatelessWidget {
+  const AppBottomNavBar({
+    super.key,
+    required this.destinations,
+    required this.navigationShell,
+  });
+
+  final List<Destination> destinations;
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<NavigationState>();
+    return NavigationBar(
+      selectedIndex: state.currentIndex,
+      onDestinationSelected: (index) {
+        final current = state.currentIndex;
+        state.selectTab(index);
+        navigationShell.goBranch(
+          index,
+          initialLocation: index == current,
+        );
+      },
+      destinations: [
+        for (final destination in destinations)
+          NavigationDestination(
+            icon: Icon(destination.icon),
+            selectedIcon: Icon(destination.icon),
+            label: destination.label,
+          ),
+      ],
+    );
+  }
+}

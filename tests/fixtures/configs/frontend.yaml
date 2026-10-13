@@ -1,0 +1,15 @@
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: frontend
+projectName: "golden-frontend"
+applications:
+  web: true
+  api: false
+  mobile: false
+database:
+  type: none
+  architecture: fastapi
+features:
+  dashboard: true
+  database.migrations: false
+  testing: true

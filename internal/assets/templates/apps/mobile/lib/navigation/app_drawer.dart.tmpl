@@ -1,0 +1,41 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'navigation_state.dart';
+
+/// Left drawer: application functionality.
+///
+/// Constitution X: opened ONLY by the app-menu control (the AppBar
+/// menu IconButton in DrawerController) — never by swipe or other
+/// controls. Never open simultaneously with the right drawer;
+/// closed on startup. On screens wider than 600dp the permanent
+/// NavigationRail replaces this drawer (Amendment 1.0.1).
+class AppDrawer extends StatelessWidget {
+  const AppDrawer({super.key, required this.items});
+
+  final List<DrawerItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.read<NavigationState>();
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        const DrawerHeader(
+          decoration: BoxDecoration(color: Colors.blue),
+          child: Text('Menu'),
+        ),
+        for (final item in items)
+          ListTile(
+            leading: Icon(item.icon),
+            title: Text(item.label),
+            onTap: () {
+              state.closeAll();
+              context.go(item.route);
+            },
+          ),
+      ],
+    );
+  }
+}

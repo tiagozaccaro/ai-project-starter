@@ -1,0 +1,15 @@
+name: backend
+description: FastAPI backend only
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: backend
+applications:
+  web: false
+  api: true
+  mobile: false
+database:
+  type: postgresql
+  architecture: fastapi
+features:
+  database.migrations: true
+  testing: true

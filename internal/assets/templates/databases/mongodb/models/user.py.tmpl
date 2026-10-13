@@ -1,0 +1,22 @@
+"""User model for {% .ProjectName%}.
+
+MongoDB document (Beanie) with JSON Schema validation and
+a unique index on email.
+"""
+
+from beanie import Document
+from pydantic import Field
+
+
+class User(Document):
+    """MongoDB user document."""
+
+    email: str = Field(..., index=True, unique=True)
+    hashed_password: str = ""
+    is_active: bool = True
+
+    class Settings:
+        """Beanie collection settings."""
+
+        name = "users"
+        indexes = ["email"]

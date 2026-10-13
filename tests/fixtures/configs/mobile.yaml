@@ -1,0 +1,37 @@
+schemaVersion: 2
+generatorVersion: "1.0.0"
+profile: custom
+projectName: "mobile-golden"
+applications:
+  mobile: true
+database:
+  type: none
+  architecture: fastapi
+features:
+  testing: true
+metadata:
+  mobile:
+    bundleId: "com.example.mobilegolden"
+    destinations:
+      - id: home
+        label: Home
+        icon: home
+        route: /home
+      - id: search
+        label: Search
+        icon: search
+        route: /search
+      - id: settings
+        label: Settings
+        icon: settings
+        route: /settings
+    leftDrawerItems:
+      - id: help
+        label: Help
+        icon: help
+        route: /help
+    rightDrawerItems:
+      - id: profile
+        label: Profile
+        icon: person
+        route: /profile

@@ -1,8 +1,9 @@
 """Database engine and session management for {% .ProjectName%}.
 
-Relational databases (postgresql, sqlite, mysql) use async SQLAlchemy.
-MongoDB uses Motor + Beanie. With database.type=none this module is a
-no-op stub.
+Per-database overrides live in databases/<type>/database.py
+and are selected by the template catalog based on
+database.type. This file is the FastAPI default
+(PostgreSQL, async SQLAlchemy).
 """
 
 from collections.abc import AsyncGenerator
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import get_settings
 
-{% if ne .Database.Type "mongodb"%}_engine = create_async_engine(
+_engine = create_async_engine(
     get_settings().database_url,
     echo=False,
     future=True,
@@ -44,28 +45,3 @@ async def init_db() -> None:
         return
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-{% else%}
-# MongoDB uses Motor + Beanie; see app/models for document models.
-from motor.motor_asyncio import AsyncIOMotorClient
-
-_client: AsyncIOMotorClient | None = None
-
-
-def get_mongo_client() -> AsyncIOMotorClient:
-    """Return the shared Motor client."""
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(get_settings().database_url)
-    return _client
-
-
-@asynccontextmanager
-async def get_db() -> AsyncGenerator[None, None]:
-    """MongoDB does not use SQLAlchemy sessions; yield nothing."""
-    yield None
-
-
-async def init_db() -> None:
-    """Initialize MongoDB indexes (no-op at startup)."""
-    return None
-{% end%}

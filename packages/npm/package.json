@@ -1,0 +1,35 @@
+{
+  "name": "@ai-project-starter/cli",
+  "version": "1.0.0",
+  "description": "Scaffolds standalone full-stack projects (Next.js web, FastAPI API, Flutter mobile) from a validated project.config.yaml. Downloads the precompiled ai-project-starter binary for your platform.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tiagozaccaro/ai-project-starter.git"
+  },
+  "bin": {
+    "ai-project-starter": "bin/ai-project-starter"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "scaffold",
+    "generator",
+    "nextjs",
+    "fastapi",
+    "flutter",
+    "cli"
+  ],
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

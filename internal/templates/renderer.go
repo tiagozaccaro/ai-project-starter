@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/your-org/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 )
 
 // TemplateManifest describes a single template file: its source
