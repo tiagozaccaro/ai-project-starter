@@ -1,5 +1,5 @@
 // Package config defines the authoritative configuration model for
-// ai-project-starter. ProjectConfig is the single source of truth for a
+// project-forge. ProjectConfig is the single source of truth for a
 // generated project and is serialized as project.config.yaml.
 package config
 

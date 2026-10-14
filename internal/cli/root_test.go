@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
+	"github.com/tiagozaccaro/project-forge/internal/pipeline"
 )
 
 // TestExecute_noSubcommand tests that Execute prints help when no
@@ -30,7 +30,7 @@ func TestExecute_noSubcommand(t *testing.T) {
 func TestNewRootCommand(t *testing.T) {
 	root := NewRootCommand()
 	require.NotNil(t, root)
-	assert.Equal(t, "ai-project-starter", root.Name())
+	assert.Equal(t, "project-forge", root.Name())
 	assert.Equal(t, Version, root.Version)
 	assert.True(t, root.SilenceUsage)
 	assert.True(t, root.SilenceErrors)

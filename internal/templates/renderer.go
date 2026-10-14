@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
 )
 
 

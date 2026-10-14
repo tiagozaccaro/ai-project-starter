@@ -1,12 +1,12 @@
-# Feature Specification: ai-project-starter
+# Feature Specification: project-forge
 
-**Feature Branch**: `001-ai-project-starter`
+**Feature Branch**: `001-project-forge`
 
 **Created**: 2026-10-12
 
 **Status**: Draft
 
-**Input**: User description: "Build a reusable, configurable project generator named `ai-project-starter`. Its purpose is to generate consistent, maintainable, AI-friendly software repositories for new applications. It is a developer tool, not an application-specific business product."
+**Input**: User description: "Build a reusable, configurable project generator named `project-forge`. Its purpose is to generate consistent, maintainable, AI-friendly software repositories for new applications. It is a developer tool, not an application-specific business product."
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -20,7 +20,7 @@ A developer wants to quickly scaffold a new fullstack application using the `ful
 
 **Acceptance Scenarios**:
 
-1. **Given** the CLI is installed, **When** the user runs `ai-project-starter generate --profile fullstack --name myapp --dest ./myapp --non-interactive`, **Then** a complete fullstack project is created at `./myapp` with Next.js web app and FastAPI backend.
+1. **Given** the CLI is installed, **When** the user runs `project-forge generate --profile fullstack --name myapp --dest ./myapp --non-interactive`, **Then** a complete fullstack project is created at `./myapp` with Next.js web app and FastAPI backend.
 2. **Given** a valid configuration, **When** the generator runs, **Then** it produces a summary of enabled technologies and generated modules.
 
 ### User Story 2 - Customize a project using interactive configuration (Priority: P1)
@@ -46,7 +46,7 @@ A team wants to reproduce the exact same project structure across multiple envir
 
 **Acceptance Scenarios**:
 
-1. **Given** a valid `project.config.yaml`, **When** the user runs `ai-project-starter generate --config project.config.yaml --dest ./new-project`, **Then** the generated project matches the original exactly.
+1. **Given** a valid `project.config.yaml`, **When** the user runs `project-forge generate --config project.config.yaml --dest ./new-project`, **Then** the generated project matches the original exactly.
 2. **Given** the same configuration run twice, **Then** the output is deterministic (identical file contents, modulo timestamps).
 
 ### User Story 4 - Safe generation with dry-run and existing destination protection (Priority: P1)
@@ -194,7 +194,7 @@ A generated project must build, test, and run without the generator present.
 
 ### Session 2026-10-12
 
-- Q: What programming language should the `ai-project-starter` generator itself be implemented in, given it must be distributable as a standalone binary via npm, pipx, and Homebrew? → A: Go
+- Q: What programming language should the `project-forge` generator itself be implemented in, given it must be distributable as a standalone binary via npm, pipx, and Homebrew? → A: Go
 - Q: How should the `project.config.yaml` schema handle versioning and migrations when the generator releases new versions with changed/removed/added configuration options? → A: Explicit version field + automatic migration with opt-out
 - Q: When a user selects a profile (e.g., `fullstack`) and then overrides individual features in interactive mode or config file, should the profile be treated as a **starting preset** (copied values that can be independently changed) or a **live constraint** (changing the profile later resets overridden features to profile defaults)? → A: Starting preset (copy-on-select)
 - Q: For projects enabling both web (`apps/web`) and API (`apps/api`) with Google OAuth: should authentication be centralized in **FastAPI** (backend issues JWTs, web uses HTTP-only cookies) or **Supabase Auth** (Supabase manages auth, both web and API validate Supabase JWTs), given these are mutually exclusive architectures? → A: Exclusive per project

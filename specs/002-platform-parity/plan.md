@@ -37,7 +37,7 @@ Implement platform parity between web (Next.js) and mobile (Flutter) application
 - Web: Modern evergreen browsers (last 2 versions)
 - Mobile: iOS 16+, Android 12+
 
-**Project Type**: Feature extension to ai-project-starter generator
+**Project Type**: Feature extension to project-forge generator
 
 **Performance Goals**:
 - Generation time: <30 seconds for full project from config file

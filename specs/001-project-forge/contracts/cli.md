@@ -1,4 +1,4 @@
-# CLI Contract: ai-project-starter
+# CLI Contract: project-forge
 
 **Version**: 1.0.0
 **Generated**: 2026-10-12
@@ -28,7 +28,7 @@
 Generate a new project from profile, interactive config, or config file.
 
 ```
-ai-project-starter generate [flags]
+project-forge generate [flags]
 ```
 
 **Flags**:
@@ -67,7 +67,7 @@ ai-project-starter generate [flags]
 Validate a `project.config.yaml` file without generating.
 
 ```
-ai-project-starter validate [flags]
+project-forge validate [flags]
 ```
 
 **Flags**:
@@ -91,7 +91,7 @@ ai-project-starter validate [flags]
 Migrate a config file to the current schema version.
 
 ```
-ai-project-starter migrate-config [flags]
+project-forge migrate-config [flags]
 ```
 
 **Flags**:
@@ -123,7 +123,7 @@ ai-project-starter migrate-config [flags]
 List available profiles with descriptions.
 
 ```
-ai-project-starter list-profiles [flags]
+project-forge list-profiles [flags]
 ```
 
 **Flags**:
@@ -149,7 +149,7 @@ custom         Fully customizable
 List all configurable feature modules with dependencies.
 
 ```
-ai-project-starter list-features [flags]
+project-forge list-features [flags]
 ```
 
 **Flags**:
@@ -187,7 +187,7 @@ database:migrations  -                     db:mongodb (unless explicit)
 Upgrade a generated project to the latest generator version.
 
 ```
-ai-project-starter upgrade [flags]
+project-forge upgrade [flags]
 ```
 
 **Flags**:
@@ -214,7 +214,7 @@ ai-project-starter upgrade [flags]
 Generate shell completion scripts.
 
 ```
-ai-project-starter completion [shell]
+project-forge completion [shell]
 ```
 
 **Shells**: `bash`, `zsh`, `fish`, `powershell`
@@ -315,5 +315,5 @@ myapp/
   → mobile.destinations has 2 items
   → Fix: Add 1-3 more destinations
 
-See 'ai-project-starter validate --config project.config.yaml --strict' for full report.
+See 'project-forge validate --config project.config.yaml --strict' for full report.
 ```

@@ -23,7 +23,7 @@ This guide provides runnable validation scenarios to prove platform parity works
 
 ```bash
 git checkout feat/platform-parity
-go build -o ai-project-starter ./cmd/ai-project-starter
+go build -o project-forge ./cmd/project-forge
 ```
 
 ### 2. Generate a project with all platform parity features
@@ -79,7 +79,7 @@ metadata:
         preserveState: true
 EOF
 
-./ai-project-starter generate \
+./project-forge generate \
   --config platform-parity-config.yaml \
   --dest ./platform-parity-demo
 ```

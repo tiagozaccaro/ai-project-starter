@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
 )
 
 // Formatter renders human-readable and machine-readable

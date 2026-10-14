@@ -1,6 +1,6 @@
-# Data Model: ai-project-starter
+# Data Model: project-forge
 
-**Feature**: specs/001-ai-project-starter/spec.md
+**Feature**: specs/001-project-forge/spec.md
 **Date**: 2026-10-12
 
 ---

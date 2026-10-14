@@ -1,6 +1,6 @@
-# Quickstart Validation Guide: ai-project-starter
+# Quickstart Validation Guide: project-forge
 
-**Feature**: specs/001-ai-project-starter/spec.md
+**Feature**: specs/001-project-forge/spec.md
 **Date**: 2026-10-12
 
 ---
@@ -22,24 +22,24 @@
 
 **From source**:
 ```bash
-git clone https://github.com/tiagozaccaro/ai-project-starter
-cd ai-project-starter
-go build -o ai-project-starter ./cmd/ai-project-starter
-./ai-project-starter --version
+git clone https://github.com/tiagozaccaro/project-forge
+cd project-forge
+go build -o project-forge ./cmd/project-forge
+./project-forge --version
 ```
 
 **Via package managers** (after release):
 ```bash
 # Binary download (recommended) - static binary, no runtime deps
-curl -fsSL https://github.com/tiagozaccaro/ai-project-starter/releases/latest/download/ai-project-starter-linux-amd64.tar.gz | tar xz
-sudo mv ai-project-starter /usr/local/bin/
+curl -fsSL https://github.com/tiagozaccaro/project-forge/releases/latest/download/project-forge-linux-amd64.tar.gz | tar xz
+sudo mv project-forge /usr/local/bin/
 
 # Homebrew
 brew tap tiagozaccaro/tap
-brew install ai-project-starter
+brew install project-forge
 
 # npm wrapper (downloads precompiled binary)
-npm install -g @ai-project-starter/cli
+npm install -g @project-forge/cli
 ```
 
 ---
@@ -58,7 +58,7 @@ Each scenario validates a specific user story from the specification. Run in ord
 
 ```bash
 # Generate project
-./ai-project-starter generate --profile fullstack --name myapp --dest ./test-fullstack --non-interactive
+./project-forge generate --profile fullstack --name myapp --dest ./test-fullstack --non-interactive
 
 # Verify structure
 ls -la test-fullstack/
@@ -99,7 +99,7 @@ docker compose down
 
 ```bash
 # Run interactive (will prompt for each choice)
-./ai-project-starter generate --name custom-app --dest ./test-custom
+./project-forge generate --name custom-app --dest ./test-custom
 
 # At prompts, select:
 # - Profile: custom
@@ -139,7 +139,7 @@ ls test-custom/docker-compose.yml
 cp test-custom/project.config.yaml /tmp/my-config.yaml
 
 # Generate in clean directory
-./ai-project-starter generate --config /tmp/my-config.yaml --dest ./test-repeat
+./project-forge generate --config /tmp/my-config.yaml --dest ./test-repeat
 
 # Compare outputs (excluding lockfiles and timestamps)
 diff -r test-custom/ test-repeat/ --exclude='*',*' --exclude='node_modules' --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='pnpm-lock.yaml' --exclude='uv.lock' --exclude='pubspec.lock'
@@ -164,7 +164,7 @@ mkdir -p ./test-existing/existing-file.txt
 echo "important" > ./test-existing/existing-file.txt
 
 # Attempt generation without --force (should fail)
-./ai-project-starter generate --profile frontend --name test --dest ./test-existing --non-interactive
+./project-forge generate --profile frontend --name test --dest ./test-existing --non-interactive
 # Expected: Exit code 2, error message, existing-file.txt UNCHANGED
 
 # Verify file untouched
@@ -172,7 +172,7 @@ cat ./test-existing/existing-file.txt
 # Should still show "important"
 
 # Dry-run (should show tree, write nothing)
-./ai-project-starter generate --profile frontend --name test --dest ./test-dryrun --dry-run
+./project-forge generate --profile frontend --name test --dest ./test-dryrun --dry-run
 # Expected: Prints file tree, exit 0, NO files created
 
 # Verify nothing created
@@ -205,7 +205,7 @@ features:
 EOF
 
 # Validate (should fail)
-./ai-project-starter validate --config /tmp/invalid-config.yaml --strict
+./project-forge validate --config /tmp/invalid-config.yaml --strict
 # Expected: Exit code 1, error about Supabase-first + API conflict
 
 # Create config with MongoDB + migrations (auto-corrected, not error)
@@ -224,7 +224,7 @@ features:
   testing: true
 EOF
 
-./ai-project-starter validate --config /tmp/mongodb-config.yaml
+./project-forge validate --config /tmp/mongodb-config.yaml
 # Expected: Passes (resolves). Generation summary notes migrations was auto-forced false.
 ```
 
@@ -270,7 +270,7 @@ metadata:
         route: "/profile"
 EOF
 
-./ai-project-starter generate --config /tmp/mobile-config.yaml --dest ./test-mobile
+./project-forge generate --config /tmp/mobile-config.yaml --dest ./test-mobile
 
 # Run widget tests
 cd test-mobile/apps/mobile
@@ -308,7 +308,7 @@ git clone <generated-project-repo> test-independent
 cd test-independent
 
 # No generator installed - verify it's not in PATH
-which ai-project-starter || echo "Not found (correct)"
+which project-forge || echo "Not found (correct)"
 
 # Web app
 cd apps/web
@@ -344,15 +344,15 @@ Test each profile produces expected structure.
 
 ```bash
 # Backend only
-./ai-project-starter generate --profile backend --name backend-only --dest ./test-backend --non-interactive
+./project-forge generate --profile backend --name backend-only --dest ./test-backend --non-interactive
 ls test-backend/apps/  # Should show ONLY: api/
 
 # Frontend only
-./ai-project-starter generate --profile frontend --name frontend-only --dest ./test-frontend --non-interactive
+./project-forge generate --profile frontend --name frontend-only --dest ./test-frontend --non-interactive
 ls test-frontend/apps/  # Should show ONLY: web/
 
 # AI Fullstack
-./ai-project-starter generate --profile ai-fullstack --name ai-stack --dest ./test-ai --non-interactive
+./project-forge generate --profile ai-fullstack --name ai-stack --dest ./test-ai --non-interactive
 # Should have web + api + AI features
 grep -r "ai.*gateway" test-ai/apps/api/
 ```
@@ -378,7 +378,7 @@ database:
 features:
   testing: true
 EOF
-./ai-project-starter generate --config /tmp/sqlite-config.yaml --dest ./test-sqlite --non-interactive
+./project-forge generate --config /tmp/sqlite-config.yaml --dest ./test-sqlite --non-interactive
 
 # Supabase-first
 cat > /tmp/supabase-config.yaml <<'EOF'
@@ -397,7 +397,7 @@ features:
     - "supabase"
   testing: true
 EOF
-./ai-project-starter generate --config /tmp/supabase-config.yaml --dest ./test-supabase --non-interactive
+./project-forge generate --config /tmp/supabase-config.yaml --dest ./test-supabase --non-interactive
 
 # Hybrid
 cat > /tmp/hybrid-config.yaml <<'EOF'
@@ -416,7 +416,7 @@ features:
     - "supabase"
   testing: true
 EOF
-./ai-project-starter generate --config /tmp/hybrid-config.yaml --dest ./test-hybrid --non-interactive
+./project-forge generate --config /tmp/hybrid-config.yaml --dest ./test-hybrid --non-interactive
 ```
 
 **Verify each**:
@@ -465,7 +465,7 @@ cat .github/workflows/ci.yml | yq eval '.'
 
 | Issue | Resolution |
 |-------|------------|
-| `go build` fails | Ensure Go 1.22+, run `go mod tidy && go build ./cmd/ai-project-starter` |
+| `go build` fails | Ensure Go 1.22+, run `go mod tidy && go build ./cmd/project-forge` |
 | `pnpm install --frozen-lockfile` fails | Check Node ≥20, delete `node_modules` and `pnpm-lock.yaml`, retry |
 | `uv sync` (generated API) fails | Ensure Python 3.11+, run `uv sync` from `apps/api/` |
 | `flutter pub get --offline` fails | Run `flutter pub get` online once, then offline works |
@@ -481,10 +481,10 @@ Run after implementation to verify success criteria:
 
 ```bash
 # SC-001: Fullstack generation < 2 min
-time ./ai-project-starter generate --profile fullstack --name bench --dest ./bench --non-interactive
+time ./project-forge generate --profile fullstack --name bench --dest ./bench --non-interactive
 
 # SC-002: Config file generation < 30 sec
-time ./ai-project-starter generate --config bench/project.config.yaml --dest ./bench2
+time ./project-forge generate --config bench/project.config.yaml --dest ./bench2
 
 # SC-015: Generator test coverage
 cd <generator-repo>

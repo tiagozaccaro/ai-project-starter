@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/config"
 )
 
 // osFile and osModeCharDevice are aliased to avoid importing

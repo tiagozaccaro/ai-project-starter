@@ -45,17 +45,17 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          go build -trimpath -ldflags="-s -w" -o ai-project-starter ./cmd/ai-project-starter
+          go build -trimpath -ldflags="-s -w" -o project-forge ./cmd/project-forge
 
       - name: Package
         run: |
-          tar -czf ai-project-starter-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz ai-project-starter
+          tar -czf project-forge-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz project-forge
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ai-project-starter-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: ai-project-starter-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+          name: project-forge-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: project-forge-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
 
   release:
     name: Publish release

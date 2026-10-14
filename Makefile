@@ -1,7 +1,7 @@
 .PHONY: all build test vet fmt lint clean
 
-BINARY := ai-project-starter
-CMD := ./cmd/ai-project-starter
+BINARY := project-forge
+CMD := ./cmd/project-forge
 
 all: build test vet
 

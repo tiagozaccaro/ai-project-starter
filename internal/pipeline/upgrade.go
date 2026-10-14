@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
-	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
-	"github.com/tiagozaccaro/ai-project-starter/internal/templates"
+	"github.com/tiagozaccaro/project-forge/internal/assets"
+	"github.com/tiagozaccaro/project-forge/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/filesystem"
+	"github.com/tiagozaccaro/project-forge/internal/templates"
 )
 
 // UpgradeOptions holds the options for the upgrade command.
@@ -75,7 +75,7 @@ func Upgrade(opts UpgradeOptions) error {
 		return TemplateError(err.Error())
 	}
 
-	tmpDir, err := os.MkdirTemp("", "ai-project-starter-upgrade-*")
+	tmpDir, err := os.MkdirTemp("", "project-forge-upgrade-*")
 	if err != nil {
 		return fmt.Errorf("create temp dir: %w", err)
 	}

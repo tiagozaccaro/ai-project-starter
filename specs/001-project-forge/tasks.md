@@ -1,6 +1,6 @@
-# Tasks: ai-project-starter
+# Tasks: project-forge
 
-**Input**: Design documents from `/specs/001-ai-project-starter/`
+**Input**: Design documents from `/specs/001-project-forge/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
@@ -22,13 +22,13 @@
 - [ ] T002 [P] Create `Makefile` with `build`, `test`, `lint`, `run`, `clean` targets at `Makefile`
 - [ ] T003 [P] Create GitHub Actions CI workflow for generator at `.github/workflows/ci.yml` (lint, test, build on macos+linux)
 - [ ] T004 [P] Create `golangci-lint` config at `.golangci.yml` (enforces gofmt, go vet, ineffassign)
-- [ ] T005 Create directory structure: `cmd/ai-project-starter/`, `internal/cli/{commands}/`, `internal/config/`, `internal/dependencies/`, `internal/templates/`, `internal/filesystem/`, `internal/manifests/`, `internal/setup/`, `internal/summary/`, `internal/assets/`, `tests/unit/`, `tests/integration/`, `tests/fixtures/{configs,golden}/`
-- [ ] T006 [P] Create `cmd/ai-project-starter/main.go` entry point that wires cobra root command
+- [ ] T005 Create directory structure: `cmd/project-forge/`, `internal/cli/{commands}/`, `internal/config/`, `internal/dependencies/`, `internal/templates/`, `internal/filesystem/`, `internal/manifests/`, `internal/setup/`, `internal/summary/`, `internal/assets/`, `tests/unit/`, `tests/integration/`, `tests/fixtures/{configs,golden}/`
+- [ ] T006 [P] Create `cmd/project-forge/main.go` entry point that wires cobra root command
 - [ ] T007 Create generator `AGENTS.md` at `AGENTS.md` with Go development rules, testing thresholds, commit conventions
 - [ ] T008 Create `docs/adr/0001-go-over-python.md` (MADR format) documenting Go architecture decision per ADR-001 in plan.md §2
 - [ ] T009 [P] Create `docs/adr/0002-template-embedding.md` (MADR format) documenting `embed` package decision
 
-**Checkpoint**: `go build ./cmd/ai-project-starter` succeeds. `go vet ./...` is clean.
+**Checkpoint**: `go build ./cmd/project-forge` succeeds. `go vet ./...` is clean.
 
 ---
 
@@ -70,8 +70,8 @@
 
 **Checkpoint (Phase 0 Milestone)**: The following commands must pass:
 ```bash
-go build -o ai-project-starter ./cmd/ai-project-starter
-./ai-project-starter generate --profile backend --name test-backend --dest ./test --non-interactive
+go build -o project-forge ./cmd/project-forge
+./project-forge generate --profile backend --name test-backend --dest ./test --non-interactive
 cd test/apps/api && uv sync && uv run pytest && uv run pyright
 go test -race -coverprofile=coverage.out ./tests/unit/...  # Must show ≥90% for core modules
 go test ./tests/integration/ -run TestGolden  # Must pass
@@ -83,7 +83,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 
 **Goal**: Provide a `validate` command that catches 100% of invalid configurations before generation, with actionable error messages and suggested fixes. Negative tests cover all validation rules plus auto-correction behavior.
 
-**Independent Test**: `ai-project-starter validate --config <invalid.yaml> --strict` exits non-zero with specific error codes and fix suggestions; `ai-project-starter validate --config <valid.yaml>` exits 0.
+**Independent Test**: `project-forge validate --config <invalid.yaml> --strict` exits non-zero with specific error codes and fix suggestions; `project-forge validate --config <valid.yaml>` exits 0.
 
 ### Tests for US5
 
@@ -112,7 +112,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 - [ ] T061 [US5] Implement `validate` command with `--config`, `--strict`, `--output json/yaml` flags in `internal/cli/commands/validate.go` (contracts/cli.md §validate)
 - [ ] T062 [US5] Write test: `--strict` treats warnings as errors (exit code 1)
 
-**Checkpoint**: `ai-project-starter validate --config /tmp/invalid-config.yaml --strict` exits 1 with `INVALID_ARCH_APP` for Supabase-first+API; `ai-project-starter validate --config /tmp/mongodb-config.yaml` exits 0 with auto-correction note. (quickstart.md Scenario 5)
+**Checkpoint**: `project-forge validate --config /tmp/invalid-config.yaml --strict` exits 1 with `INVALID_ARCH_APP` for Supabase-first+API; `project-forge validate --config /tmp/mongodb-config.yaml` exits 0 with auto-correction note. (quickstart.md Scenario 5)
 
 ---
 
@@ -120,7 +120,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 
 **Goal**: All five starter profiles (`fullstack`, `backend`, `frontend`, `ai-fullstack`, `custom`) produce complete, independently-buildable projects. Web app uses Next.js + shadcn/ui; API uses FastAPI + SQLAlchemy; AI gateway included in `ai-fullstack`.
 
-**Independent Test**: `ai-project-starter generate --profile fullstack --name myapp --dest ./myapp --non-interactive` creates a project with `apps/web/` and `apps/api/`, correct dependencies, and both apps build + test independently.
+**Independent Test**: `project-forge generate --profile fullstack --name myapp --dest ./myapp --non-interactive` creates a project with `apps/web/` and `apps/api/`, correct dependencies, and both apps build + test independently.
 
 ### Tests for US1
 
@@ -142,7 +142,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 - [ ] T078 [US1] Write integration test: fullstack profile API app builds and tests pass with coverage gate (`uv sync && uv run pytest --cov-fail-under=80 && uv run pyright`) (SC-014, SC-010, research.md §4.1)
 - [ ] T079 [US1] Verify: quickstart.md Scenario 1 (fullstack generation + build + test)
 
-**Checkpoint**: `ai-project-starter generate --profile fullstack --name myapp --dest ./myapp --non-interactive` succeeds; `cd myapp/apps/web && pnpm install --frozen-lockfile && pnpm build && pnpm typecheck` succeeds; `cd ../api && uv sync && uv run pytest && uv run pyright` succeeds. (quickstart.md Scenario 1)
+**Checkpoint**: `project-forge generate --profile fullstack --name myapp --dest ./myapp --non-interactive` succeeds; `cd myapp/apps/web && pnpm install --frozen-lockfile && pnpm build && pnpm typecheck` succeeds; `cd ../api && uv sync && uv run pytest && uv run pyright` succeeds. (quickstart.md Scenario 1)
 
 ---
 
@@ -163,7 +163,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 - [ ] T088 [US4] Implement `--dry-run` tree display with file count in `internal/cli/commands/generate.go` and `internal/summary/formatter.go`
 - [ ] T089 [US4] Implement `--force` flag handling and backup creation in `internal/filesystem/safety.go`
 
-**Checkpoint**: `ai-project-starter generate --profile frontend --name test --dest ./test-existing --non-interactive` exits code 2 with error; `existing-file.txt` bytes unchanged. `./ai-project-starter generate --profile frontend --name test --dest ./test-dryrun --dry-run` prints tree, exit 0, no files written. (quickstart.md Scenario 4)
+**Checkpoint**: `project-forge generate --profile frontend --name test --dest ./test-existing --non-interactive` exits code 2 with error; `existing-file.txt` bytes unchanged. `./project-forge generate --profile frontend --name test --dest ./test-dryrun --dry-run` prints tree, exit 0, no files written. (quickstart.md Scenario 4)
 
 ---
 
@@ -213,7 +213,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 - [ ] T116 [US7] Write security test: generated `.env.example` contains no real secrets — only placeholder values with documentation (Constitution VI, plan.md §5.5)
 - [ ] T117 [US7] Write test: generation completes successfully with network disabled — no external HTTP calls during generation (spec.md Edge Cases, plan.md §2 Constraints)
 
-**Checkpoint**: All 5 profiles generate successfully to temp dirs; each app builds and tests pass; `which ai-project-starter` returns nothing in the clean environment. No disabled feature artifacts found in any output. Security tests pass. (quickstart.md Scenario 7, SC-003, SC-004, SC-005, Constitution VI)
+**Checkpoint**: All 5 profiles generate successfully to temp dirs; each app builds and tests pass; `which project-forge` returns nothing in the clean environment. No disabled feature artifacts found in any output. Security tests pass. (quickstart.md Scenario 7, SC-003, SC-004, SC-005, Constitution VI)
 
 ---
 
@@ -333,7 +333,7 @@ go test ./tests/integration/ -run TestGolden  # Must pass
 - [ ] T185 Final verification: run all quickstart.md Scenarios 1-10
 - [ ] T186 Create `kilo.json` and `.kilo/commands/` integration for generator project itself (AGENTS.md-driven development, Constitution III)
 
-**Checkpoint**: `go build -o ai-project-starter ./cmd/ai-project-starter` succeeds on macOS+Linux; `golangci-lint run` clean; coverage ≥90%; all 10 quickstart scenarios pass. Generated binary is <50MB and <30s generation time. (SC-001, SC-002, SC-015, FR-030)
+**Checkpoint**: `go build -o project-forge ./cmd/project-forge` succeeds on macOS+Linux; `golangci-lint run` clean; coverage ≥90%; all 10 quickstart scenarios pass. Generated binary is <50MB and <30s generation time. (SC-001, SC-002, SC-015, FR-030)
 
 ---
 
@@ -451,7 +451,7 @@ Deliverable: Complete generator with all profiles, all databases, all architectu
 **Purpose**: Remaining gaps between the spec/plan/tasks and the current implementation, identified by `/speckit.converge` on 2026-10-13. Ordered CRITICAL → HIGH → MEDIUM → LOW.
 
 - [X] T187 CRITICAL: Create root `AGENTS.md` with Go development rules, testing thresholds (generator coverage ≥90%), and commit conventions per Constitution III, T007 (missing)
-- [ ] T188 Add missing `go.mod` dependencies (`spf13/viper`, `stretchr/testify`, `google/go-cmp`) and replace placeholder module path `github.com/your-org/ai-project-starter` per T001, plan §Technical Context (missing)
+- [ ] T188 Add missing `go.mod` dependencies (`spf13/viper`, `stretchr/testify`, `google/go-cmp`) and replace placeholder module path `github.com/your-org/project-forge` per T001, plan §Technical Context (missing)
 - [X] T189 Write `docs/adr/0001-go-over-python.md` and `docs/adr/0002-template-embedding.md` in MADR format per T008, T009, Constitution VIII (missing)
 - [X] T190 Create Flutter mobile templates at `internal/assets/templates/apps/mobile/` — `pubspec.yaml`, `pubspec.lock`, `analysis_options.yaml`, `lib/main.dart`, `lib/navigation/{adaptive_scaffold,bottom_nav_bar,app_drawer,user_drawer,drawer_controller,navigation_state}.dart` — plus `test/navigation_test.dart.tmpl` and `test/widget_test.dart.tmpl` covering all 9 navigation rules per FR-026, FR-027, Constitution X + Amendment 1.0.1, T124-T132 (missing)
 - [ ] T191 Create database-specific template overrides at `internal/assets/templates/databases/{postgresql,sqlite,mysql,mongodb,none}/` — `database.py` per database, plus MongoDB `startup.py` and `models/user.py` with JSON Schema validators and indexes per FR-014, FR-015, T019, T136-T138, T144-T146 (missing)

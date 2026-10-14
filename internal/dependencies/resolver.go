@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/config"
 )
 
 // AutoCorrection records an automatic adjustment made by the resolver.

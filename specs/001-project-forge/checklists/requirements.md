@@ -1,8 +1,8 @@
-# Specification Quality Checklist: ai-project-starter
+# Specification Quality Checklist: project-forge
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-12
-**Feature**: specs/001-ai-project-starter/spec.md
+**Feature**: specs/001-project-forge/spec.md
 
 ## Content Quality
 

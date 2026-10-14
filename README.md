@@ -81,9 +81,9 @@ For generated projects, you'll need:
 ### From Source (Recommended for Development)
 
 ```bash
-git clone https://github.com/tiagozaccaro/ai-project-starter.git
-cd ai-project-starter
-go build -o projectforge ./cmd/ai-project-starter
+git clone https://github.com/tiagozaccaro/project-forge.git
+cd project-forge
+go build -o projectforge ./cmd/project-forge
 ```
 
 Verify the build:
@@ -104,13 +104,13 @@ projectforge --version
 
 ```bash
 # Linux amd64
-GOOS=linux GOARCH=amd64 go build -o projectforge-linux-amd64 ./cmd/ai-project-starter
+GOOS=linux GOARCH=amd64 go build -o projectforge-linux-amd64 ./cmd/project-forge
 
 # macOS arm64
-GOOS=darwin GOARCH=arm64 go build -o projectforge-darwin-arm64 ./cmd/ai-project-starter
+GOOS=darwin GOARCH=arm64 go build -o projectforge-darwin-arm64 ./cmd/project-forge
 
 # Windows amd64
-GOOS=windows GOARCH=amd64 go build -o projectforge.exe ./cmd/ai-project-starter
+GOOS=windows GOARCH=amd64 go build -o projectforge.exe ./cmd/project-forge
 ```
 
 ## Quick Start
@@ -470,7 +470,7 @@ CLI Flags / Config File
 
 | Package | Purpose |
 | --- | --- |
-| `cmd/ai-project-starter` | Application entry point |
+| `cmd/project-forge` | Application entry point |
 | `internal/cli` | Cobra CLI wiring, flags, version handling |
 | `internal/config` | Schema, validation, profiles, config migration |
 | `internal/dependencies` | Resolves config → capabilities (enforces constraints & auto-corrections) |
@@ -529,7 +529,7 @@ my-app/
 ### Build
 
 ```bash
-go build -o projectforge ./cmd/ai-project-starter
+go build -o projectforge ./cmd/project-forge
 ```
 
 ### Run Tests
