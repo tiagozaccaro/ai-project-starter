@@ -1,0 +1,126 @@
+// Session manager for {% .ProjectName%} web app.
+// Handles auth session state and cross-platform sync.
+
+import { useState, useEffect, useCallback } from 'react';
+
+interface User {
+  id: string;
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
+interface SessionInfo {
+  expiresAt: string;
+  platforms: string[];
+}
+
+interface AuthState {
+  authenticated: boolean;
+  user?: User;
+  session?: SessionInfo;
+  loading: boolean;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export function useSessionManager() {
+  const [state, setState] = useState<AuthState>({
+    authenticated: false,
+    loading: true,
+  });
+
+  const checkSession = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/status`, {
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        setState({ authenticated: false, loading: false });
+        return { authenticated: false };
+      }
+
+      const data = await res.json();
+      setState({
+        authenticated: data.authenticated,
+        user: data.user,
+        session: data.session,
+        loading: false,
+      });
+      return data;
+    } catch (error) {
+      setState({ authenticated: false, loading: false });
+      return { authenticated: false };
+    }
+  }, []);
+
+  const syncLogout = useCallback(async (sourcePlatform: 'web' | 'mobile') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/sync/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ source_platform: sourcePlatform }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to sync logout');
+      }
+
+      // After sync logout, clear local state
+      setState({ authenticated: false, loading: false });
+      return await res.json();
+    } catch (error) {
+      console.error('Sync logout failed:', error);
+      throw error;
+    }
+  }, []);
+
+  const login = useCallback(async (provider: 'google' | 'supabase') => {
+    // This would integrate with the auth provider's login flow
+    // For Google OIDC, redirect to /api/auth/google
+    // For Supabase, use supabase.auth.signInWithOAuth()
+    window.location.href = `${API_BASE_URL}/api/v1/auth/${provider}`;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await syncLogout('web');
+  }, [syncLogout]);
+
+  // Initialize session on mount
+  useEffect(() => {
+    checkSession();
+
+    // Listen for storage changes (cross-tab logout sync)
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'auth_sync_logout') {
+        checkSession();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [checkSession]);
+
+  return {
+    ...state,
+    checkSession,
+    syncLogout,
+    login,
+    logout,
+  };
+}
+
+// Hook for components that need to listen to auth changes
+export function useAuth() {
+  const { authenticated, user, session, loading, checkSession } = useSessionManager();
+  
+  return {
+    isAuthenticated: authenticated,
+    user,
+    session,
+    loading,
+    refetch: checkSession,
+  };
+}

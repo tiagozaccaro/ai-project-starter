@@ -1,14 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Conflict Resolution Strategies for {% .ProjectName%}",
-  "type": "object",
-  "properties": {
-    "strategy": {
-      "type": "string",
-      "enum": ["LAST_WRITE_WINS", "SERVER_WINS", "CLIENT_WINS", "MERGE", "MANUAL"],
-      "description": "Strategy to use for resolving conflicts",
-      "default": "LAST_WRITE_WINS"
-    }
-  },
-  "required": ["strategy"]
+  "version": "1.0",
+  "default": "{{ .Features.ConflictResolution.default | default \"last-write-wins\" }}",
+  "entityTypes": {
+    {% for entityType, strategy in .Features.ConflictResolution.entityTypes %}
+    "{{entityType}}": "{{strategy}}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  }
 }

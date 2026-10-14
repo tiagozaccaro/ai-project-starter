@@ -10,16 +10,6 @@ import (
 	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 )
 
-// TemplateManifest describes a single template file: its source
-// path in the embedded FS, its output path relative to the
-// project root, and an optional condition expression evaluated
-// against the ResolvedConfig.
-type TemplateManifest struct {
-	SourcePath string
-	TargetPath string
-	Condition  string
-	Executable bool
-}
 
 // RenderedFile is a fully rendered output file.
 type RenderedFile struct {

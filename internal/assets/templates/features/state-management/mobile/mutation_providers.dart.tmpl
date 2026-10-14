@@ -1,0 +1,202 @@
+// Mutation providers for {% .ProjectName%}.
+// Handles create, update, delete operations with optimistic updates.
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'riverpod_provider.dart';
+
+// Generic mutation provider
+final createMutationProvider = FutureProvider.family<dynamic, ({String endpoint, Map<String, dynamic> body})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.post(
+    Uri.parse('$baseUrl${params.endpoint}'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(params.body),
+  );
+  
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('Create failed: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+final updateMutationProvider = FutureProvider.family<dynamic, ({String endpoint, String id, Map<String, dynamic> body})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.put(
+    Uri.parse('$baseUrl${params.endpoint}/${params.id}'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(params.body),
+  );
+  
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('Update failed: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+final patchMutationProvider = FutureProvider.family<dynamic, ({String endpoint, String id, Map<String, dynamic> body})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.patch(
+    Uri.parse('$baseUrl${params.endpoint}/${params.id}'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode(params.body),
+  );
+  
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('Patch failed: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+final deleteMutationProvider = FutureProvider.family<void, ({String endpoint, String id})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.delete(
+    Uri.parse('$baseUrl${params.endpoint}/${params.id}'),
+    headers: {'Content-Type': 'application/json'},
+  );
+  
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('Delete failed: ${response.statusCode}');
+  }
+});
+
+// Mutation state notifier for optimistic updates
+class MutationStateNotifier<T> extends StateNotifier<AsyncValue<T>> {
+  final Ref ref;
+  final String endpoint;
+  
+  MutationStateNotifier(this.ref, this.endpoint) : super(const AsyncValue.data(null));
+  
+  Future<T> create(Map<String, dynamic> body, {T Function(dynamic)? fromJson}) async {
+    state = const AsyncValue.loading();
+    try {
+      final result = await ref.read(createMutationProvider((endpoint: endpoint, body: body)).future);
+      state = AsyncValue.data(fromJson != null ? fromJson(result) : result as T);
+      return state.value!;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+  
+  Future<T> update(String id, Map<String, dynamic> body, {T Function(dynamic)? fromJson}) async {
+    state = const AsyncValue.loading();
+    try {
+      final result = await ref.read(updateMutationProvider((endpoint: endpoint, id: id, body: body)).future);
+      state = AsyncValue.data(fromJson != null ? fromJson(result) : result as T);
+      return state.value!;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+  
+  Future<void> delete(String id) async {
+    state = const AsyncValue.loading();
+    try {
+      await ref.read(deleteMutationProvider((endpoint: endpoint, id: id)).future);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+}
+
+// Optimistic mutation mixin
+mixin OptimisticMutationMixin<T> on StateNotifier<AsyncValue<T>> {
+  Ref get ref;
+  String get endpoint;
+  
+  Future<void> optimisticCreate(
+    Map<String, dynamic> body, {
+    required T Function(T? current, dynamic response) optimisticUpdate,
+    required Future<void> Function() rollback,
+  }) async {
+    final previousState = state;
+    state = AsyncValue.data(optimisticUpdate(state.value, body));
+    
+    try {
+      await ref.read(createMutationProvider((endpoint: endpoint, body: body)).future);
+      // Refresh actual data
+      ref.invalidate(listQueryProvider(endpoint));
+    } catch (e, st) {
+      // Rollback on error
+      state = previousState;
+      await rollback();
+      rethrow;
+    }
+  }
+  
+  Future<void> optimisticUpdate(
+    String id,
+    Map<String, dynamic> body, {
+    required T Function(T? current, dynamic response) optimisticUpdate,
+    required Future<void> Function() rollback,
+  }) async {
+    final previousState = state;
+    state = AsyncValue.data(optimisticUpdate(state.value, body));
+    
+    try {
+      await ref.read(updateMutationProvider((endpoint: endpoint, id: id, body: body)).future);
+      ref.invalidate(listQueryProvider(endpoint));
+    } catch (e, st) {
+      state = previousState;
+      await rollback();
+      rethrow;
+    }
+  }
+  
+  Future<void> optimisticDelete(
+    String id, {
+    required T Function(T? current) optimisticUpdate,
+    required Future<void> Function() rollback,
+  }) async {
+    final previousState = state;
+    state = AsyncValue.data(optimisticUpdate(state.value));
+    
+    try {
+      await ref.read(deleteMutationProvider((endpoint: endpoint, id: id)).future);
+      ref.invalidate(listQueryProvider(endpoint));
+    } catch (e, st) {
+      state = previousState;
+      await rollback();
+      rethrow;
+    }
+  }
+}
+
+// Provider for creating mutation notifiers per entity
+final mutationProviderFactory = Provider.family<MutationStateNotifier<dynamic>, String>((ref, endpoint) {
+  return MutationStateNotifier(ref, endpoint);
+});
+
+// Helper for batch mutations
+final batchMutationProvider = FutureProvider.family<List<dynamic>, ({String endpoint, List<Map<String, dynamic>> items})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final results = <dynamic>[];
+  for (final item in params.items) {
+    final response = await client.post(
+      Uri.parse('$baseUrl${params.endpoint}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(item),
+    );
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      results.add(jsonDecode(response.body));
+    }
+  }
+  
+  return results;
+});

@@ -1,0 +1,57 @@
+// VAPID key management for {% .ProjectName%}.
+// Handles fetching and caching VAPID public key from the backend.
+
+interface VapidKeys {
+  publicKey: string;
+  privateKey?: string; // Only available on server
+}
+
+let cachedPublicKey: string | null = null;
+
+export async function getVapidPublicKey(): Promise<string> {
+  if (cachedPublicKey) return cachedPublicKey;
+
+  const base = 
+    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+    "http://localhost:8000";
+
+  try {
+    const response = await fetch(`${base}/api/v1/push/vapid-keys/public-key`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch VAPID public key: ${response.status}`);
+    }
+
+    const data = await response.json();
+    cachedPublicKey = data.public_key;
+    return cachedPublicKey;
+  } catch (error) {
+    console.error("Failed to get VAPID public key:", error);
+    throw error;
+  }
+}
+
+export function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export function getVapidPublicKeyForSubscription(): Uint8Array {
+  // This should be called after getVapidPublicKey() has been called
+  if (!cachedPublicKey) {
+    throw new Error('VAPID public key not loaded. Call getVapidPublicKey() first.');
+  }
+  return urlBase64ToUint8Array(cachedPublicKey);
+}
+
+export function clearVapidCache(): void {
+  cachedPublicKey = null;
+}

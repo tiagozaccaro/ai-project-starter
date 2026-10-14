@@ -1,0 +1,48 @@
+"""Conflict resolution utilities for offline storage in {% .ProjectName%}.
+Provides strategies and functions for resolving sync conflicts.
+"""
+
+from enum import Enum
+from typing import Any, Optional
+
+
+class ConflictResolutionStrategy(Enum):
+    """Strategy for resolving conflicts between client and server data."""
+    LAST_WRITE_WINS = "last-write-wins"
+    SERVER_WINS = "server-wins"
+    CLIENT_WINS = "client-wins"
+    MANUAL = "manual"
+
+
+def resolve_conflict(
+    entity_id: str,
+    client_data: Any,
+    server_data: Any,
+    strategy: ConflictResolutionStrategy
+) -> Any:
+    """
+    Resolve a conflict between client and server data based on the strategy.
+    
+    Args:
+        entity_id: The ID of the entity in conflict
+        client_data: The data from the client
+        server_data: The data from the server
+        strategy: The conflict resolution strategy to apply
+        
+    Returns:
+        The resolved data to be used
+    """
+    if strategy == ConflictResolutionStrategy.SERVER_WINS:
+        return server_data
+    elif strategy == ConflictResolutionStrategy.CLIENT_WINS:
+        return client_data
+    elif strategy == ConflictResolutionStrategy.MANUAL:
+        # For manual resolution, we return None to indicate that manual intervention is needed
+        # The caller should handle this case appropriately
+        return None
+    else:  # DEFAULT to LAST_WRITE_WINS
+        # In a real implementation, we would compare timestamps
+        # Since we don't have timestamp information in this function signature,
+        # we'll default to server wins as a safe choice
+        # The actual timestamp comparison should be done at the service layer
+        return server_data

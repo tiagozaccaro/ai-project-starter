@@ -1,0 +1,166 @@
+// Riverpod providers for {% .ProjectName%}.
+// Provides type-safe state management with Riverpod 2.x.
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+// Configuration provider
+final apiBaseUrlProvider = Provider<String>((ref) {
+  return const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000');
+});
+
+// HTTP client provider
+final httpClientProvider = Provider<http.Client>((ref) {
+  return http.Client();
+});
+
+// Generic query provider for fetching data
+final queryProvider = FutureProvider.family<dynamic, String>((ref, endpoint) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.get(
+    Uri.parse('$baseUrl$endpoint'),
+    headers: {'Content-Type': 'application/json'},
+  );
+  
+  if (response.statusCode != 200) {
+    throw Exception('Failed to fetch $endpoint: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+// Generic mutation provider
+final mutationProvider = FutureProvider.family<dynamic, ({String endpoint, String method, Map<String, dynamic>? body})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.send(
+    http.Request(params.method, Uri.parse('$baseUrl${params.endpoint}'))
+      ..headers.addAll({'Content-Type': 'application/json'})
+      ..body = params.body != null ? jsonEncode(params.body!) : '',
+  );
+  
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('Mutation failed: ${response.statusCode}');
+  }
+  
+  return jsonDecode(await response.stream.bytesToString());
+});
+
+// State notifier for managing cached data with optimistic updates
+class DataStateNotifier<T> extends StateNotifier<AsyncValue<T>> {
+  final Ref ref;
+  final String endpoint;
+  final T Function(dynamic) fromJson;
+  
+  DataStateNotifier(this.ref, this.endpoint, this.fromJson) : super(const AsyncValue.loading()) {
+    _fetch();
+  }
+  
+  Future<void> _fetch() async {
+    try {
+      final data = await ref.read(queryProvider(endpoint).future);
+      state = AsyncValue.data(fromJson(data));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+  
+  Future<T> mutate({
+    required String method,
+    required Map<String, dynamic> body,
+    T Function(T current, Map<String, dynamic> response)? optimisticUpdate,
+  }) async {
+    final previousState = state;
+    
+    // Apply optimistic update if provided
+    if (optimisticUpdate != null && state.hasValue) {
+      state = AsyncValue.data(optimisticUpdate(state.value!, body));
+    }
+    
+    try {
+      final response = await ref.read(
+        mutationProvider(({endpoint: endpoint, method: method, body: body})).future
+      );
+      
+      // Refresh the actual data from server
+      await _fetch();
+      
+      return fromJson(response);
+    } catch (e, st) {
+      // Rollback on error
+      state = previousState;
+      rethrow;
+    }
+  }
+  
+  void invalidate() {
+    ref.invalidate(queryProvider(endpoint));
+    _fetch();
+  }
+}
+
+// Provider factory for creating data state notifiers
+final dataStateProvider = Provider.family<DataStateNotifier<dynamic>, String>((ref, endpoint) {
+  // This would be customized per entity type
+  return DataStateNotifier(ref, endpoint, (json) => json);
+});
+
+// Example: Items state provider
+// This would be generated per entity type
+/*
+final itemsProvider = StateNotifierProvider<ItemsNotifier, AsyncValue<List<Item>>>((ref) {
+  return ItemsNotifier(ref);
+});
+
+class ItemsNotifier extends DataStateNotifier<List<Item>> {
+  ItemsNotifier(Ref ref) : super(ref, '/api/v1/items', (json) => (json as List).map((e) => Item.fromJson(e)).toList());
+  
+  Future<Item> createItem(Item item) {
+    return mutate(
+      method: 'POST',
+      body: item.toJson(),
+      optimisticUpdate: (current, response) => [...current, Item.fromJson(response)],
+    );
+  }
+  
+  Future<void> updateItem(Item item) {
+    return mutate(
+      method: 'PUT',
+      body: item.toJson(),
+      optimisticUpdate: (current, response) => current.map((i) => i.id == item.id ? Item.fromJson(response) : i).toList(),
+    );
+  }
+  
+  Future<void> deleteItem(String id) {
+    return mutate(
+      method: 'DELETE',
+      body: {},
+      optimisticUpdate: (current, _) => current.where((i) => i.id != id).toList(),
+    );
+  }
+}
+*/
+
+// Query invalidation helper
+class QueryInvalidator {
+  final Ref ref;
+  
+  QueryInvalidator(this.ref);
+  
+  void invalidateEndpoint(String endpoint) {
+    ref.invalidate(queryProvider(endpoint));
+  }
+  
+  void invalidateAll() {
+    // Would invalidate all queries - in practice, track registered endpoints
+    // ref.invalidate(queryProvider);
+  }
+}
+
+final queryInvalidatorProvider = Provider<QueryInvalidator>((ref) {
+  return QueryInvalidator(ref);
+});

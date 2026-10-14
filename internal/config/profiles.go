@@ -22,7 +22,14 @@ type profilePreset struct {
 
 // profileOrder preserves the historical listing order of the
 // built-in profiles.
-var profileOrder = []string{}
+var profileOrder = []string{
+	ProfileFullstack,
+	ProfileBackend,
+	ProfileFrontend,
+	ProfileMobile,
+	ProfileAIFullstack,
+	ProfileCustom,
+}
 
 // profilePresets is the map of profile name to preset, loaded
 // from the embedded composition manifests under

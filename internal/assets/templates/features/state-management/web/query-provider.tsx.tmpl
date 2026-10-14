@@ -1,0 +1,25 @@
+'use client';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState, useEffect, ReactNode } from 'react';
+import { makeQueryClient } from './query-client';
+
+interface QueryProviderProps {
+  children: ReactNode;
+}
+
+export function QueryProvider({ children }: QueryProviderProps) {
+  const [queryClient] = useState(() => makeQueryClient());
+  
+  // Persist query client across navigation
+  useEffect(() => {
+    // Optional: Set up persistence for offline support
+    // This would integrate with @tanstack/react-query-persist-client
+  }, [queryClient]);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+}

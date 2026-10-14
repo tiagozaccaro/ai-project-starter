@@ -8,6 +8,16 @@
 
 **Input**: User description: "Implement platform parity between web and mobile applications for offline storage (bidirectional sync with conflict resolution), push notifications (both Web Push API and FCM), and state management (React Query + Riverpod), as defined in docs/platform-parity.md. This applies when both applications.web and applications.mobile are enabled."
 
+## Clarifications
+
+### Session 2026-10-14
+
+- Q: How is the conflict resolution strategy (last-write-wins, server-wins, client-wins, manual) configured per entity? (FR-007) → A: `features.conflictResolution` map in `project.config.yaml`, per entity type, with `last-write-wins` as the default.
+- Q: Where are VAPID keys stored and how are they rotated? (FR-002) → A: Private key in `.env` as `VAPID_PRIVATE_KEY`; public key exposed via `GET /api/v1/push/vapid-public-key` endpoint; keys generated once at setup via `vapid --gen`; rotation requires manual env update and client re-subscription.
+- Q: When push notification permission is denied on a platform, what is the specific "in-app notification fallback" behavior? (FR-002, Edge Cases) → A: Persistent in-app notification center (list of unread notifications stored locally, acknowledged on open).
+- Q: Are deep linking URL schemes and domains configurable per project or hardcoded? (FR-004, Assumptions) → A: Configurable via `metadata.deepLinkScheme` and `metadata.deepLinkUrl` in `project.config.yaml`.
+- Q: What is the LRU eviction threshold for offline storage quota exceeded, and how is the user warned? (Edge Cases) → A: Evict at 80% of quota by size; evict oldest 25% of entries by last-accessed timestamp; warn via persistent in-app banner until dismissed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Offline Storage with Bidirectional Sync (Priority: P1)
@@ -91,23 +101,24 @@ A developer enables both web and mobile applications with the same auth provider
 ## Edge Cases
 
 - What happens when sync conflicts cannot be automatically resolved? (Manual resolution UI required)
-- What happens when push notification permission is denied on one platform? (Graceful degradation, in-app notification fallback)
+- What happens when push notification permission is denied on one platform? (In-app notification center: notifications are stored locally in a persistent unread list until acknowledged; no system push)
 - What happens when the same user is logged in on both platforms and one logs out? (Session invalidation propagation)
-- What happens when offline data exceeds storage quota? (LRU eviction with user warning)
+- What happens when offline data exceeds storage quota? (LRU eviction at 80% of quota by size; evict oldest 25% of entries by last-accessed timestamp; warn via persistent in-app banner until dismissed)
 - What happens when network is intermittent during sync? (Retry with exponential backoff, partial sync support)
 - What happens when deep link targets a route that requires authentication? (Redirect to login, then continue to target)
+- What happens when VAPID keys are rotated? (Clients must re-subscribe to push notifications with the new public key)
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
 - **FR-001**: The generator MUST provide an `offlineStorage` feature flag that enables bidirectional offline sync with conflict resolution for both web (IndexedDB) and mobile (Drift/SQLite) when both applications are enabled
-- **FR-002**: The generator MUST provide a `pushNotifications` feature flag that enables Web Push API (VAPID) for web and FCM for mobile with a unified backend notification service
+- **FR-002**: The generator MUST provide a `pushNotifications` feature flag that enables Web Push API (VAPID) for web and FCM for mobile with a unified backend notification service; when push permission is denied, an in-app notification center displays stored unread notifications
 - **FR-003**: The generator MUST provide a `stateManagement` feature flag that configures React Query for web and Riverpod for mobile with equivalent patterns for caching, mutations, and invalidation
-- **FR-004**: The generator MUST provide a `deepLinking` feature flag that configures shared route definitions for Next.js (web) and go_router (mobile) enabling identical URL-to-content mapping
+- **FR-004**: The generator MUST provide a `deepLinking` feature flag that configures shared route definitions for Next.js (web) and go_router (mobile) enabling identical URL-to-content mapping; URL scheme and domain MUST be configurable via `metadata.deepLinkScheme` and `metadata.deepLinkUrl` in `project.config.yaml`
 - **FR-005**: The authentication system MUST maintain session parity across web and mobile for both Google OIDC and Supabase Auth providers
 - **FR-006**: The generator MUST generate TypeScript API client (from OpenAPI) for web and Dart API client for mobile that target the same backend endpoints
-- **FR-007**: The offline sync engine MUST support configurable conflict resolution strategies: last-write-wins (default), server-wins, client-wins, and manual
+- **FR-007**: The offline sync engine MUST support configurable conflict resolution strategies via a `features.conflictResolution` map in `project.config.yaml` (per entity type), with `last-write-wins` as the default; supported strategies: last-write-wins, server-wins, client-wins, and manual
 - **FR-008**: The push notification system MUST support topic-based subscriptions for both platforms
 - **FR-009**: The state management setup MUST include optimistic updates with automatic rollback on failure for both platforms
 - **FR-010**: The generated code MUST include E2E tests for each platform parity capability (offline sync, push notifications, state management, deep linking, auth parity)
@@ -137,11 +148,11 @@ A developer enables both web and mobile applications with the same auth provider
 
 - Users have Node.js ≥20, Python ≥3.11, and Flutter ≥3.19 installed
 - Users have Firebase project configured for FCM (mobile push)
-- Users have VAPID keys generated or will generate them for Web Push
+- Users have VAPID keys generated at setup via `vapid --gen` (private key stored in `.env` as `VAPID_PRIVATE_KEY`, never committed)
 - The backend (FastAPI) is the source of truth for data and auth
 - Offline sync uses the backend API as the synchronization hub
 - Conflict resolution defaults to last-write-wins based on server timestamp
-- Deep linking uses the same route structure: `/resource/:id` pattern
+- Deep linking uses configurable URL scheme and domain from `metadata.deepLinkScheme` and `metadata.deepLinkUrl`, with the same route structure: `/resource/:id` pattern
 - React Query v5 and Riverpod v2 are the chosen libraries (stable, well-maintained)
 - Drift (SQLite) is used for mobile offline storage; idb/IndexedDB for web
 - The feature flags are independent but work best when all enabled together

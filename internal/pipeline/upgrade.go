@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
@@ -67,8 +68,8 @@ func Upgrade(opts UpgradeOptions) error {
 	}
 
 	// 4. Render templates into a temporary directory.
-	renderer := templates.NewRenderer(templates.AssetsFS())
-	manifest := templates.Catalog()
+	renderer := templates.NewRenderer(assets.FS)
+	manifest := templates.TemplateManifests(rc)
 	files, err := renderer.RenderAll(manifest, rc)
 	if err != nil {
 		return TemplateError(err.Error())

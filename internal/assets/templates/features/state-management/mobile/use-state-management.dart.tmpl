@@ -2,55 +2,57 @@
 // Uses Riverpod for scoped state that syncs across platforms.
 // When enabled on both web and mobile, provides synchronized state across platforms.
 
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'dart:dart_async';  // For AsyncSnapshots
 
 // Base provider for data state
-const dataStateProvider = StateProvider<Map<String, dynamic>>({});
+final dataStateProvider = StateProvider<Map<String, dynamic>>(({}));
 
 // Provider to fetch data from API
-const dataFetchProvider = AsyncProvider(async (ProviderRef ref) => {
-  const res = await http.post(
-    '\${(process as any).env?.API_BASE_URL || 'http://10.0.2.2:8000'}',
-    json.encode({}),
+final dataFetchProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000');
+  final res = await http.post(
+    Uri.parse('$apiBaseUrl/api/data'),
     headers: { 'Content-Type': 'application/json' },
+    body: jsonEncode({}),
   );
+  
   if (res.statusCode != 200) {
-    throw Exception('Failed to fetch data');
+    throw Exception('Failed to fetch data: ${res.statusCode}');
   }
-  return json.decode(res.body) as Map<String, dynamic>;
+  
+  return jsonDecode(res.body) as Map<String, dynamic>;
 });
 
 // Provider to mutate data on the server
-const dataMutateProvider = AsyncProvider(async (ProviderRef ref, Map<String, dynamic> newData) => {
-  const res = await http.post(
-    '\${(process as any).env?.API_BASE_URL || 'http://10.0.2.2:8000'}',
-    json.encode(newData),
+final dataMutateProvider = FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>((ref, newData) async {
+  final String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:8000');
+  final res = await http.post(
+    Uri.parse('$apiBaseUrl/api/data'),
     headers: { 'Content-Type': 'application/json' },
+    body: jsonEncode(newData),
   );
+  
   if (res.statusCode != 200) {
-    throw Exception('Failed to mutate data');
+    throw Exception('Failed to mutate data: ${res.statusCode}');
   }
-  return json.decode(res.body) as Map<String, dynamic>;
+  
+  return jsonDecode(res.body) as Map<String, dynamic>;
 });
 
 // Hook-like function to use state management
-Map<String, dynamic> useStateManagement(WidgetController controller) {
-  final ref = controller.isFirstRefresh ? controller.widget.refProvider : controller.widget.ref;
-  
-  final data = ref.get(dataStateProvider);
-  final fetchData = ref.get(dataFetchProvider);
-  final mutateData = ref.get(dataMutateProvider);
-
-  // Invalidate and refetch on app start
-  ref invalidate dataFetchProvider;
+Map<String, dynamic> useStateManagement(WidgetRef ref) {
+  final data = ref.watch(dataStateProvider);
+  final fetchData = ref.watch(dataFetchProvider);
+  final mutateData = ref.watch(dataMutateProvider);
   
   return {
-    'data': data,
-    'isLoading': fetchData is LoadingState,
-    'error': fetchData is ErrorState ? fetchData.error as String : null,
-    'mutateData': mutateData,
+    'data': data.value,
+    'isLoading': fetchData.isLoading,
+    'error': fetchData.error?.toString(),
+    'mutateData': mutateData.value,
   };
 }

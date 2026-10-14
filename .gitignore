@@ -3,11 +3,42 @@
 
 # Test / coverage artifacts
 coverage.out
+coverage/
 *.test
+*.out
 
 # Go workspace
 go.work
 go.work.sum
+
+# Go build artifacts
+*.exe
+vendor/
+
+# Node.js / TypeScript
+node_modules/
+dist/
+build/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.packages
+.symlinks/
+flutter-driver.log
+
+# Environment / secrets (Constitution VI)
+.env*
+*.pem
+*.key
+secrets.*
 
 # Editors
 .idea/

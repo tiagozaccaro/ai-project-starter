@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 )
@@ -211,13 +212,36 @@ func TestNewRenderer(t *testing.T) {
 }
 
 func TestCatalog(t *testing.T) {
-	catalog := Catalog()
+	// Use a minimal ResolvedConfig for testing
+	rc := &dependencies.ResolvedConfig{
+		ProjectConfig: &config.ProjectConfig{
+			Applications: config.ApplicationsConfig{Web: true, API: true, Mobile: true},
+			Features: config.FeaturesConfig{
+				Dashboard: true,
+				Login: true,
+				OfflineStorage: true,
+				PushNotifications: true,
+				StateManagement: true,
+				DeepLinking: true,
+			},
+		},
+		GenerateWeb: true,
+		GenerateAPI: true,
+		GenerateMobile: true,
+		GenerateDashboard: true,
+		GenerateLogin: true,
+		GenerateOfflineStorage: true,
+		GeneratePushNotifications: true,
+		GenerateStateManagement: true,
+		GenerateDeepLinking: true,
+	}
+	catalog := TemplateManifests(rc)
 	require.NotEmpty(t, catalog)
 	// Should have many templates
 	assert.GreaterOrEqual(t, len(catalog), 10)
 }
 
 func TestAssetsFS(t *testing.T) {
-	fs := AssetsFS()
+	fs := assets.FS
 	require.NotNil(t, fs)
 }

@@ -6,7 +6,7 @@ import json
 import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from flask import Blueprint, request, jsonify, g
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..models import db
@@ -14,23 +14,22 @@ from ..models.offline_sync import SyncMetadata, PendingMutation, OfflineData
 from ..utils.auth import require_auth
 from ..utils.conflict_resolution import resolve_conflict, ConflictResolutionStrategy
 
-# Create blueprint
-sync_bp = Blueprint('sync', __name__, url_prefix='/sync')
+# Create router
+router = APIRouter(prefix="/sync", tags=["sync"])
 logger = logging.getLogger(__name__)
 
 
-@sync_bp.route('/<entity_type>/push', methods=['POST'])
-@require_auth
-def push_changes(entity_type: str):
+@router.post("/{entity_type}/push")
+async def push_changes(entity_type: str, request: Request):
     """Receive pushed changes from client and apply to server database."""
     try:
-        data = request.get_json()
+        data = await request.json()
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            raise HTTPException(status_code=400, detail="No data provided")
         
         mutations = data.get('mutations', [])
         if not isinstance(mutations, list):
-            return jsonify({'error': 'Mutations must be a list'}), 400
+            raise HTTPException(status_code=400, detail="Mutations must be a list")
         
         conflicts = []
         processed_count = 0
@@ -155,7 +154,7 @@ def push_changes(entity_type: str):
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Database error during sync push: {e}")
-            return jsonify({'error': 'Database error'}), 500
+            raise HTTPException(status_code=500, detail="Database error")
         
         # Update sync metadata for this entity type
         try:
@@ -180,25 +179,26 @@ def push_changes(entity_type: str):
             logger.error(f"Error updating sync metadata: {e}")
             # Don't fail the whole request for metadata issues
         
-        return jsonify({
-            'success': True,
-            'processed': processed_count,
-            'conflicts': conflicts,
-            'serverTimestamp': int(datetime.utcnow().timestamp())
-        })
+        return {
+            "success": True,
+            "processed": processed_count,
+            "conflicts": conflicts,
+            "serverTimestamp": int(datetime.utcnow().timestamp())
+        }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in push_changes: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@sync_bp.route('/<entity_type>/pull', methods=['GET'])
-@require_auth
-def pull_changes(entity_type: str):
+@router.get("/{entity_type}/pull")
+async def pull_changes(entity_type: str, request: Request):
     """Provide changes to client since last sync."""
     try:
         # Get since timestamp from query params
-        since_str = request.args.get('since', '0')
+        since_str = request.query_params.get('since', '0')
         try:
             since_timestamp = int(since_str)
         except ValueError:
@@ -233,24 +233,16 @@ def pull_changes(entity_type: str):
             # Use the later of metadata timestamp or current time
             server_timestamp = max(sync_metadata.last_sync_timestamp, server_timestamp)
         
-        return jsonify({
-            'success': True,
-            'entities': entity_list,
-            'serverTimestamp': server_timestamp
-        })
+        return {
+            "success": True,
+            "entities": entity_list,
+            "serverTimestamp": server_timestamp
+        }
         
     except Exception as e:
         logger.error(f"Error in pull_changes: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-# Error handlers
-@sync_bp.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
-
-
-@sync_bp.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    return jsonify({'error': 'Internal server error'}), 500
+# Error handlers are typically handled at the application level in FastAPI
+# rather than at the router level, so we don't include them here

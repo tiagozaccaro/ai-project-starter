@@ -4,10 +4,11 @@ Defines the database schema for sync metadata and offline data.
 
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Boolean, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class SyncMetadata(Base):
@@ -39,7 +40,7 @@ class OfflineData(Base):
     
     # Ensure uniqueness of entity_id per entity_type
     __table_args__ = (
-        db.UniqueConstraint('entity_type', 'entity_id', name='_entity_type_id_uc'),
+        UniqueConstraint('entity_type', 'entity_id', name='_entity_type_id_uc'),
     )
     
     def __repr__(self):

@@ -1,0 +1,155 @@
+// Deep linking configuration for {% .ProjectName%} web app.
+// Shared route definitions for consistent deep linking across platforms.
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect } from 'react';
+
+export interface DeepLinkRoute {
+  pattern: string;
+  path: string;
+  requiresAuth: boolean;
+  params?: string[];
+}
+
+export interface DeepLinkConfig {
+  scheme: string;
+  domain: string;
+  routes: DeepLinkRoute[];
+}
+
+// Default deep link configuration
+export const defaultDeepLinkConfig: DeepLinkConfig = {
+  scheme: process.env.NEXT_PUBLIC_DEEP_LINK_SCHEME || 'myapp',
+  domain: process.env.NEXT_PUBLIC_DEEP_LINK_DOMAIN || 'localhost:3000',
+  routes: [
+    { pattern: 'dashboard', path: '/dashboard', requiresAuth: true },
+    { pattern: 'dashboard/:id', path: '/dashboard/:id', requiresAuth: true, params: ['id'] },
+    { pattern: 'profile', path: '/profile', requiresAuth: true },
+    { pattern: 'profile/:id', path: '/profile/:id', requiresAuth: true, params: ['id'] },
+    { pattern: 'settings', path: '/settings', requiresAuth: true },
+    { pattern: 'item/:id', path: '/items/:id', requiresAuth: true, params: ['id'] },
+    { pattern: 'login', path: '/login', requiresAuth: false },
+    { pattern: 'register', path: '/register', requiresAuth: false },
+  ],
+};
+
+// Parse a deep link URL into route and params
+export function parseDeepLink(url: string, config: DeepLinkConfig = defaultDeepLinkConfig): {
+  route: DeepLinkRoute | null;
+  params: Record<string, string>;
+} {
+  try {
+    const urlObj = new URL(url);
+    const path = urlObj.pathname;
+    
+    // Handle custom scheme (myapp://path)
+    if (url.startsWith(`${config.scheme}://`)) {
+      const pathPart = url.replace(`${config.scheme}://`, '');
+      return parseDeepLink(`https://${config.domain}/${pathPart}`, config);
+    }
+    
+    // Match against configured routes
+    for (const route of config.routes) {
+      const regex = routeToRegex(route.pattern);
+      const match = path.match(regex);
+      if (match) {
+        const params: Record<string, string> = {};
+        if (route.params) {
+          route.params.forEach((param, index) => {
+            params[param] = match[index + 1];
+          });
+        }
+        return { route, params };
+      }
+    }
+    
+    return { route: null, params: {} };
+  } catch {
+    return { route: null, params: {} };
+  }
+}
+
+// Convert route pattern to regex
+function routeToRegex(pattern: string): RegExp {
+  const regexPattern = pattern
+    .replace(/:([^/]+)/g, '([^/]+)')
+    .replace(/\//g, '\\/');
+  return new RegExp(`^${regexPattern}$`);
+}
+
+// Generate a deep link URL for a route
+export function generateDeepLink(
+  routePattern: string,
+  params: Record<string, string> = {},
+  config: DeepLinkConfig = defaultDeepLinkConfig
+): string {
+  let path = routePattern;
+  
+  for (const [key, value] of Object.entries(params)) {
+    path = path.replace(`:${key}`, value);
+  }
+  
+  return `${config.scheme}://${path}`;
+}
+
+// Hook for handling deep links in Next.js
+export function useDeepLinking(config: DeepLinkConfig = defaultDeepLinkConfig) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const handleDeepLink = useCallback((url: string) => {
+    const { route, params } = parseDeepLink(url, config);
+    
+    if (!route) {
+      console.warn('Deep link not recognized:', url);
+      router.push('/');
+      return;
+    }
+    
+    // Check auth requirement
+    if (route.requiresAuth) {
+      // In a real app, check auth state here
+      // If not authenticated, redirect to login with return URL
+      // For now, just navigate
+    }
+    
+    // Build the target path with params
+    let targetPath = route.path;
+    for (const [key, value] of Object.entries(params)) {
+      targetPath = targetPath.replace(`:${key}`, value);
+    }
+    
+    // Add search params if any
+    const search = searchParams.toString();
+    if (search) {
+      targetPath += `?${search}`;
+    }
+    
+    router.push(targetPath);
+  }, [router, config, searchParams]);
+
+  const navigateTo = useCallback((routePattern: string, params: Record<string, string> = {}) => {
+    const url = generateDeepLink(routePattern, params, config);
+    handleDeepLink(url);
+  }, [handleDeepLink, config]);
+
+  // Handle initial deep link on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Check for custom scheme in URL
+      const href = window.location.href;
+      if (href.startsWith(`${config.scheme}://`)) {
+        handleDeepLink(href);
+      }
+    }
+  }, [handleDeepLink, config]);
+
+  return {
+    handleDeepLink,
+    navigateTo,
+    parseDeepLink: (url: string) => parseDeepLink(url, config),
+    generateDeepLink: (pattern: string, params: Record<string, string>) => 
+      generateDeepLink(pattern, params, config),
+  };
+}

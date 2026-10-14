@@ -1,121 +1,74 @@
-// Conflict resolution strategies for {% .ProjectName%}.
-// Provides multiple strategies for resolving data conflicts
-// between client and server during synchronization.
-
-export type ConflictResolutionStrategy =
-  | 'LAST_WRITE_WINS'
-  | 'SERVER_WINS'
-  | 'CLIENT_WINS'
-  | 'MERGE'
-  | 'MANUAL';
-
-interface ConflictResolutionOptions {
-  strategy?: ConflictResolutionStrategy;
-  mergeFunction?: (clientData: unknown, serverData: unknown) => unknown;
-  manualResolver?: (entityId: string, clientData: unknown, serverData: unknown) => Promise<unknown>;
+export enum ConflictResolutionStrategy {
+  LAST_WRITE_WINS = 'last-write-wins',
+  SERVER_WINS = 'server-wins',
+  CLIENT_WINS = 'client-wins',
+  MANUAL = 'manual',
 }
 
-/**
- * Resolve a conflict between client and server data.
- * @param entityId - ID of the entity in conflict
- * @param clientData - Data from the client
- * @param serverData - Data from the server
- * @param options - Conflict resolution options
- * @returns Resolved data
- */
+export interface EntityWithTimestamp {
+  value: any;
+  createdAt?: number;
+  updatedAt?: number;
+  [key: string]: any;
+}
+
 export function resolveConflict(
   entityId: string,
-  clientData: unknown,
-  serverData: unknown,
-  options: ConflictResolutionOptions = {}
-): unknown {
-  const {
-    strategy = 'LAST_WRITE_WINS',
-    mergeFunction,
-    manualResolver
-  } = options;
-  
+  clientData: EntityWithTimestamp,
+  serverData: EntityWithTimestamp,
+  strategy: ConflictResolutionStrategy
+): { resolvedData: any; requiresManual: boolean } {
   switch (strategy) {
-    case 'SERVER_WINS':
-      return serverData;
+    case ConflictResolutionStrategy.SERVER_WINS:
+      return { resolvedData: serverData.value, requiresManual: false };
     
-    case 'CLIENT_WINS':
-      return clientData;
+    case ConflictResolutionStrategy.CLIENT_WINS:
+      return { resolvedData: clientData.value, requiresManual: false };
     
-    case 'MERGE':
-      if (!mergeFunction) {
-        throw new Error('Merge function required for MERGE strategy');
-      }
-      return mergeFunction(clientData, serverData);
+    case ConflictResolutionStrategy.MANUAL:
+      return { 
+        resolvedData: null, 
+        requiresManual: true 
+      };
     
-    case 'MANUAL':
-      if (!manualResolver) {
-        throw new Error('Manual resolver required for MANUAL strategy');
-      }
-      // Note: This is synchronous for simplicity, but in practice
-      // you might want to handle this asynchronously
-      return manualResolver(entityId, clientData, serverData);
-    
-    case 'LAST_WRITE_WINS':
+    case ConflictResolutionStrategy.LAST_WRITE_WINS:
     default:
-      // For simplicity, we'll use a basic timestamp comparison
-      // In a real implementation, you'd compare actual timestamps
-      // from the client and server data
-      return serverData; // Default to server wins for safety
+      // Compare timestamps for last-write-wins
+      const clientTime = clientData.updatedAt || clientData.createdAt || 0;
+      const serverTime = serverData.updatedAt || serverData.createdAt || 0;
+      
+      if (clientTime >= serverTime) {
+        return { resolvedData: clientData.value, requiresManual: false };
+      } else {
+        return { resolvedData: serverData.value, requiresManual: false };
+      }
   }
 }
 
-/**
- * Resolve conflicts for multiple entities.
- * @param conflicts - Array of conflict objects
- * @param options - Conflict resolution options
- * @returns Array of resolved data objects
- */
-export function resolveConflicts(
-  conflicts: Array<{
-    entityId: string;
-    clientData: unknown;
-    serverData: unknown;
-  }>,
-  options: ConflictResolutionOptions = {}
-): Array<{ entityId: string; resolvedData: unknown }> {
-  return conflicts.map(conflict => ({
-    entityId: conflict.entityId,
-    resolvedData: resolveConflict(
-      conflict.entityId,
-      conflict.clientData,
-      conflict.serverData,
-      options
-    )
-  }));
+export function detectConflict(
+  clientData: EntityWithTimestamp,
+  serverData: EntityWithTimestamp
+): boolean {
+  // Simple conflict detection: both have data and they're different
+  if (!clientData || !serverData) return false;
+  
+  // If both have values, check if they're deeply equal
+  return JSON.stringify(clientData.value) !== JSON.stringify(serverData.value);
 }
 
-/**
- * Default merge function that shallow merges objects.
- * Prefers server values when there are conflicts.
- * @param clientData - Client data object
- * @param serverData - Server data object
- * @returns Merged data object
- */
-export function defaultMergeFunction(
-  clientData: unknown,
-  serverData: unknown
-): unknown {
-  if (typeof clientData !== 'object' || clientData === null ||
-      typeof serverData !== 'object' || serverData === null) {
-    return serverData; // Default to server for non-objects
-  }
-  
-  const clientObj = clientData as Record<string, unknown>;
-  const serverObj = serverData as Record<string, unknown>;
-  
-  // Start with client data
-  const merged = { ...clientObj };
-  
-  // Overlay server data (server wins in case of conflict)
-  for (const key in serverObj) {
-    merged[key] = serverObj[key];
-  }
-  
-  return merged;
+export function createConflictRecord(
+  entityId: string,
+  entityType: string,
+  clientData: EntityWithTimestamp,
+  serverData: EntityWithTimestamp
+) {
+  return {
+    entityId,
+    entityType,
+    clientData: clientData.value,
+    serverData: serverData.value,
+    clientTimestamp: clientData.updatedAt || clientData.createdAt,
+    serverTimestamp: serverData.updatedAt || serverData.createdAt,
+    detectedAt: Date.now(),
+  };
 }

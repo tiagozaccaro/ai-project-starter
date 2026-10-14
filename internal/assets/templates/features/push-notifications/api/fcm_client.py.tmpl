@@ -1,0 +1,116 @@
+"""Firebase Cloud Messaging client for {% .ProjectName%}.
+Handles sending push notifications via FCM API.
+"""
+
+import json
+from typing import Dict, Any, Optional
+import httpx
+from app.core.config import get_settings
+
+
+class FcmClient:
+    """Client for interacting with Firebase Cloud Messaging API."""
+    
+    def __init__(self):
+        self.settings = get_settings()
+        self.fcm_url = "https://fcm.googleapis.com/fcm/send"
+    
+    async def send_notification(
+        self,
+        token: str,
+        title: str,
+        body: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Send a push notification to a device via FCM.
+        
+        Args:
+            token: FCM registration token
+            title: Notification title
+            body: Notification body
+            data: Optional data payload
+            
+        Returns:
+            True if notification was sent successfully, False otherwise
+        """
+        if not self.settings.fcm_server_key:
+            return False
+            
+        headers = {
+            'Authorization': f'key={self.settings.fcm_server_key}',
+            'Content-Type': 'application/json',
+        }
+        
+        payload: Dict[str, Any] = {
+            'to': token,
+            'notification': {
+                'title': title,
+                'body': body,
+            },
+        }
+        
+        if data:
+            payload['data'] = data
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.fcm_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=10.0
+                )
+                return response.status_code == 200
+        except Exception:
+            return False
+    
+    async def send_multicast(
+        self,
+        tokens: list[str],
+        title: str,
+        body: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Send a push notification to multiple devices.
+        
+        Args:
+            tokens: List of FCM registration tokens
+            title: Notification title
+            body: Notification body
+            data: Optional data payload
+            
+        Returns:
+            Dictionary with success/failure counts
+        """
+        if not self.settings.fcm_server_key or not tokens:
+            return {"success": 0, "failure": len(tokens)}
+            
+        headers = {
+            'Authorization': f'key={self.settings.fcm_server_key}',
+            'Content-Type': 'application/json',
+        }
+        
+        payload: Dict[str, Any] = {
+            'registration_ids': tokens,
+            'notification': {
+                'title': title,
+                'body': body,
+            },
+        }
+        
+        if data:
+            payload['data'] = data
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.fcm_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=10.0
+                )
+                return response.json()
+        except Exception:
+            return {"success": 0, "failure": len(tokens)}

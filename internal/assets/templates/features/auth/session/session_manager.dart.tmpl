@@ -1,0 +1,234 @@
+// Session manager for {% .ProjectName%} mobile app.
+// Handles auth session state and cross-platform sync.
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class User {
+  final String id;
+  final String email;
+  final String? name;
+  final String? picture;
+
+  User({
+    required this.id,
+    required this.email,
+    this.name,
+    this.picture,
+  });
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      name: json['name'] as String?,
+      picture: json['picture'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'name': name,
+      'picture': picture,
+    };
+  }
+}
+
+class SessionInfo {
+  final String expiresAt;
+  final List<String> platforms;
+
+  SessionInfo({
+    required this.expiresAt,
+    required this.platforms,
+  });
+
+  factory SessionInfo.fromJson(Map<String, dynamic> json) {
+    return SessionInfo(
+      expiresAt: json['expires_at'] as String,
+      platforms: (json['platforms'] as List).cast<String>(),
+    );
+  }
+}
+
+class AuthState {
+  final bool authenticated;
+  final User? user;
+  final SessionInfo? session;
+  final bool loading;
+
+  AuthState({
+    required this.authenticated,
+    this.user,
+    this.session,
+    required this.loading,
+  });
+
+  AuthState copyWith({
+    bool? authenticated,
+    User? user,
+    SessionInfo? session,
+    bool? loading,
+  }) {
+    return AuthState(
+      authenticated: authenticated ?? this.authenticated,
+      user: user ?? this.user,
+      session: session ?? this.session,
+      loading: loading ?? this.loading,
+    );
+  }
+}
+
+class AuthSyncService {
+  final String baseUrl;
+
+  AuthSyncService({String? baseUrl})
+      : baseUrl = baseUrl ??
+            (const bool.fromEnvironment('dart.vm.product') == false
+                ? 'http://10.0.2.2:8000'
+                : 'https://your-api.com');
+
+  Future<AuthState> checkSession() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/v1/auth/status'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) {
+        return AuthState(authenticated: false, loading: false);
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      
+      if (!data['authenticated'] as bool) {
+        return AuthState(authenticated: false, loading: false);
+      }
+
+      return AuthState(
+        authenticated: true,
+        user: data['user'] != null ? User.fromJson(data['user']) : null,
+        session: data['session'] != null ? SessionInfo.fromJson(data['session']) : null,
+        loading: false,
+      );
+    } catch (e) {
+      return AuthState(authenticated: false, loading: false);
+    }
+  }
+
+  Future<SyncLogoutResponse> syncLogout({required String sourcePlatform}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/auth/sync/logout'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'source_platform': sourcePlatform}),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to sync logout');
+      }
+
+      return SyncLogoutResponse.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception('Failed to sync logout: $e');
+    }
+  }
+}
+
+class SyncLogoutResponse {
+  final int invalidatedSessions;
+  final int unregisteredSubscriptions;
+
+  SyncLogoutResponse({
+    required this.invalidatedSessions,
+    required this.unregisteredSubscriptions,
+  });
+
+  factory SyncLogoutResponse.fromJson(Map<String, dynamic> json) {
+    return SyncLogoutResponse(
+      invalidatedSessions: json['invalidated_sessions'] as int,
+      unregisteredSubscriptions: json['unregistered_subscriptions'] as int,
+    );
+  }
+}
+
+// Riverpod providers
+final authSyncServiceProvider = Provider<AuthSyncService>((ref) {
+  return AuthSyncService();
+});
+
+final authStateProvider = StateNotifierProvider<AuthStateNotifier, AuthState>((ref) {
+  return AuthStateNotifier(ref.read(authSyncServiceProvider));
+});
+
+class AuthStateNotifier extends StateNotifier<AuthState> {
+  final AuthSyncService _syncService;
+
+  AuthStateNotifier(this._syncService) : super(AuthState(authenticated: false, loading: true)) {
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await checkSession();
+    
+    // Listen for auth changes from other platforms (via shared preferences)
+    // In a real implementation, this could use platform channels or background sync
+    _listenForCrossPlatformChanges();
+  }
+
+  Future<void> checkSession() async {
+    final newState = await _syncService.checkSession();
+    state = newState;
+  }
+
+  Future<void> syncLogout({required String sourcePlatform}) async {
+    await _syncService.syncLogout(sourcePlatform: sourcePlatform);
+    state = AuthState(authenticated: false, loading: false);
+    
+    // Notify other platforms via shared preferences
+    _notifyOtherPlatforms();
+  }
+
+  void _listenForCrossPlatformChanges() {
+    // This would be implemented with platform-specific code
+    // For now, it's a placeholder for cross-platform auth sync
+  }
+
+  void _notifyOtherPlatforms() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_sync_logout', DateTime.now().toIso8601String());
+  }
+
+  Future<void> login(String provider) async {
+    // Trigger OAuth flow
+    // This would use url_launcher or webview
+    state = state.copyWith(loading: true);
+  }
+
+  Future<void> logout() async {
+    await syncLogout(sourcePlatform: 'mobile');
+  }
+}
+
+// Hook for widgets to access auth state
+extension AuthStateExtensions on WidgetRef {
+  AuthState get authState => watch(authStateProvider);
+  
+  AuthStateNotifier get authNotifier => read(authStateProvider.notifier);
+  
+  Future<void> checkAuthStatus() async {
+    await authNotifier.checkSession();
+  }
+  
+  Future<void> logout() async {
+    await authNotifier.logout();
+  }
+  
+  Future<void> syncLogout(String sourcePlatform) async {
+    await authNotifier.syncLogout(sourcePlatform: sourcePlatform);
+  }
+}

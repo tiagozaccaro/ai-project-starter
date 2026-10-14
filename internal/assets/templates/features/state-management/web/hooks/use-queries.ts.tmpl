@@ -1,0 +1,107 @@
+import { useQuery, useQueries, UseQueryOptions } from '@tanstack/react-query';
+import { getQueryClient } from './query-client';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+interface FetchOptions {
+  endpoint: string;
+  queryKey?: string[];
+  enabled?: boolean;
+  staleTime?: number;
+}
+
+export function useFetch<T = any>({
+  endpoint,
+  queryKey,
+  enabled = true,
+  staleTime = 60 * 1000,
+}: FetchOptions): UseQueryOptions<T, Error, T, string[]> {
+  const key = queryKey || [endpoint];
+  
+  return {
+    queryKey: key,
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${endpoint}: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    enabled,
+    staleTime,
+  };
+}
+
+export function useQueryData<T = any>(options: FetchOptions) {
+  return useQuery(useFetch<T>(options));
+}
+
+export function useQueriesData<T = any>(optionsList: FetchOptions[]) {
+  return useQueries({
+    queries: optionsList.map(opt => useFetch<T>(opt)),
+  });
+}
+
+export function useMutation<T = any, TVariables = any>(
+  endpoint: string,
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
+  onSuccess?: (data: T) => void,
+  onError?: (error: Error) => void
+) {
+  const queryClient = getQueryClient();
+  
+  return {
+    mutate: async (variables: TVariables): Promise<T> => {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(variables),
+      });
+      
+      if (!response.ok) {
+        const error = new Error(`Mutation failed: ${response.status}`);
+        onError?.(error);
+        throw error;
+      }
+      
+      const data = await response.json();
+      onSuccess?.(data);
+      return data;
+    },
+    mutateAsync: async (variables: TVariables): Promise<T> => {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(variables),
+      });
+      
+      if (!response.ok) {
+        const error = new Error(`Mutation failed: ${response.status}`);
+        onError?.(error);
+        throw error;
+      }
+      
+      const data = await response.json();
+      onSuccess?.(data);
+      return data;
+    },
+  };
+}
+
+export function invalidateQueries(queryKey: string[]) {
+  const queryClient = getQueryClient();
+  queryClient.invalidateQueries({ queryKey });
+}

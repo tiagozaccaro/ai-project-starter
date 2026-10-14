@@ -1,8 +1,10 @@
 // Push notifications hook for {% .ProjectName%}.
-// Uses the Web Push API for browser-based notifications
-// with the Web Notifications API as fallback.
+ // Uses the Web Push API for browser-based notifications
+ // with the Web Notifications API as fallback.
 
-export function usePushNotifications() {
+ import { useState, useEffect } from 'react';
+
+ export function usePushNotifications() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);

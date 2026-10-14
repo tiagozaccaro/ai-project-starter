@@ -1,0 +1,233 @@
+// Optimistic updates for {% .ProjectName%}.
+// Provides consistent optimistic update patterns for Riverpod state management.
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'mutation_providers.dart';
+
+// Base class for state with optimistic updates
+class OptimisticState<T> {
+  final T data;
+  final bool isOptimistic;
+  final DateTime? timestamp;
+  
+  const OptimisticState({
+    required this.data,
+    this.isOptimistic = false,
+    this.timestamp,
+  });
+  
+  OptimisticState<T> copyWith({
+    T? data,
+    bool? isOptimistic,
+    DateTime? timestamp,
+  }) {
+    return OptimisticState(
+      data: data ?? this.data,
+      isOptimistic: isOptimistic ?? this.isOptimistic,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+}
+
+// Mixin for adding optimistic update capabilities to any StateNotifier
+mixin OptimisticUpdater<T> on StateNotifier<AsyncValue<OptimisticState<T>>> {
+  Ref get ref;
+  String get endpoint;
+  
+  // Apply optimistic update
+  void applyOptimisticUpdate(T Function(T current) updater) {
+    final currentState = state;
+    if (currentState.hasValue) {
+      final updatedData = updater(currentState.value!.data);
+      state = AsyncValue.data(
+        currentState.value!.copyWith(
+          data: updatedData,
+          isOptimistic: true,
+          timestamp: DateTime.now(),
+        )
+      );
+    }
+  }
+  
+  // Confirm optimistic update with server response
+  void confirmOptimisticUpdate(T serverData) {
+    final currentState = state;
+    if (currentState.hasValue) {
+      state = AsyncValue.data(
+        currentState.value!.copyWith(
+          data: serverData,
+          isOptimistic: false,
+          timestamp: DateTime.now(),
+        )
+      );
+    } else {
+      state = AsyncValue.data(
+        OptimisticState(data: serverData, isOptimistic: false, timestamp: DateTime.now())
+      );
+    }
+  }
+  
+  // Rollback optimistic update
+  void rollbackOptimisticUpdate(T originalData) {
+    state = AsyncValue.data(
+      OptimisticState(data: originalData, isOptimistic: false, timestamp: DateTime.now())
+    );
+  }
+  
+  // Execute mutation with optimistic update
+  Future<T> executeWithOptimisticUpdate<TResult>({
+    required Future<TResult> Function() mutation,
+    required T Function(T current) optimisticUpdater,
+    required T Function(TResult serverResponse) fromServerResponse,
+  }) async {
+    final originalData = state.hasValue ? state.value!.data : null;
+    
+    // Apply optimistic update
+    if (originalData != null) {
+      applyOptimisticUpdate(optimisticUpdater);
+    }
+    
+    try {
+      final result = await mutation();
+      final serverData = fromServerResponse(result);
+      confirmOptimisticUpdate(serverData);
+      return serverData;
+    } catch (e, st) {
+      // Rollback on error
+      if (originalData != null) {
+        rollbackOptimisticUpdate(originalData);
+      }
+      rethrow;
+    }
+  }
+}
+
+// Specific optimistic update helpers for list state
+extension OptimisticListUpdater<T> on StateNotifier<AsyncValue<OptimisticState<List<T>>>> {
+  // Optimistically add item to list
+  void optimisticAdd(T item) {
+    applyOptimisticUpdate((current) => [...current, item]);
+  }
+  
+  // Confirm added item with server response
+  void confirmAdd(T serverItem) {
+    final currentState = state;
+    if (currentState.hasValue) {
+      final updatedList = [
+        ...currentState.value!.data.where((item) => item != serverItem), // Remove temp item if deduped
+        serverItem,
+      ];
+      state = AsyncValue.data(
+        currentState.value!.copyWith(data: updatedList, isOptimistic: false)
+      );
+    }
+  }
+  
+  // Optimistically update item in list
+  void optimisticUpdateItem(bool Function(T item) predicate, T Function(T item) updater) {
+    applyOptimisticUpdate((current) => current.map((item) => predicate(item) ? updater(item) : item).toList());
+  }
+  
+  // Confirm updated item
+  void confirmUpdateItem(bool Function(T item) predicate, T serverItem) {
+    final currentState = state;
+    if (currentState.hasValue) {
+      final updatedList = currentState.value!.data.map((item) => 
+        predicate(item) ? serverItem : item
+      ).toList();
+      state = AsyncValue.data(
+        currentState.value!.copyWith(data: updatedList, isOptimistic: false)
+      );
+    }
+  }
+  
+  // Optimistically remove item from list
+  void optimisticRemove(bool Function(T item) predicate) {
+    applyOptimisticUpdate((current) => current.where((item) => !predicate(item)).toList());
+  }
+  
+  // Confirm removal
+  void confirmRemove(bool Function(T item) predicate) {
+    final currentState = state;
+    if (currentState.hasValue) {
+      final updatedList = currentState.value!.data.where((item) => !predicate(item)).toList();
+      state = AsyncValue.data(
+        currentState.value!.copyWith(data: updatedList, isOptimistic: false)
+      );
+    }
+  }
+}
+
+// Example usage for a typical entity
+/*
+class ItemStateNotifier extends StateNotifier<AsyncValue<OptimisticState<List<Item>>>> 
+    with OptimisticUpdater<List<Item>>, OptimisticListUpdater<Item> {
+  final Ref ref;
+  final String endpoint;
+  
+  ItemStateNotifier(this.ref, this.endpoint) 
+    : super(const AsyncValue.loading()) {
+    _fetch();
+  }
+  
+  Future<void> _fetch() async {
+    try {
+      final items = await ref.read(listQueryProvider(endpoint).future);
+      state = AsyncValue.data(OptimisticState(data: items.cast<Item>()));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+  
+  Future<Item> createItem(Item item) {
+    return executeWithOptimisticUpdate(
+      mutation: () => ref.read(createMutationProvider((endpoint: endpoint, body: item.toJson())).future),
+      optimisticUpdater: (current) => [...current, item],
+      fromServerResponse: (response) => Item.fromJson(response),
+    );
+  }
+  
+  Future<Item> updateItem(Item item) {
+    return executeWithOptimisticUpdate(
+      mutation: () => ref.read(updateMutationProvider((endpoint: endpoint, id: item.id, body: item.toJson())).future),
+      optimisticUpdater: (current) => current.map((i) => i.id == item.id ? item : i).toList(),
+      fromServerResponse: (response) => Item.fromJson(response),
+    );
+  }
+  
+  Future<void> deleteItem(String id) {
+    return executeWithOptimisticUpdate(
+      mutation: () => ref.read(deleteMutationProvider((endpoint: endpoint, id: id)).future),
+      optimisticUpdater: (current) => current.where((i) => i.id != id).toList(),
+      fromServerResponse: (_) => state.value!.data, // Return current list
+    ).then((_) => null);
+  }
+}
+*/
+
+// Provider for optimistic state (to be customized per entity)
+final optimisticStateProvider = StateNotifierProvider.family<StateNotifier<AsyncValue<OptimisticState<dynamic>>>, AsyncValue<OptimisticState<dynamic>>, String>((ref, endpoint) {
+  // This is a base provider - actual implementation would be per entity type
+  // Return a notifier that fetches initial data
+  return _BaseOptimisticNotifier(ref, endpoint);
+});
+
+class _BaseOptimisticNotifier<T> extends StateNotifier<AsyncValue<OptimisticState<T>>> 
+    with OptimisticUpdater<T> {
+  final Ref ref;
+  @override
+  final String endpoint;
+  
+  _BaseOptimisticNotifier(this.ref, this.endpoint) : super(const AsyncValue.loading()) {
+    _fetch();
+  }
+  
+  Future<void> _fetch() async {
+    try {
+      final data = await ref.read(listQueryProvider(endpoint).future);
+      state = AsyncValue.data(OptimisticState(data: data as T));
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 	"github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
@@ -53,8 +54,8 @@ func loadResolved(t *testing.T, fixture string) *dependencies.ResolvedConfig {
 // a map of target path to rendered content.
 func renderAll(t *testing.T, rc *dependencies.ResolvedConfig) map[string][]byte {
 	t.Helper()
-	renderer := templates.NewRenderer(templates.AssetsFS())
-	files, err := renderer.RenderAll(templates.Catalog(), rc)
+	renderer := templates.NewRenderer(assets.FS)
+	files, err := renderer.RenderAll(templates.TemplateManifests(rc), rc)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}

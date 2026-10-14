@@ -2,29 +2,68 @@
 // Handles FCM token registration and push notification reception.
 // When enabled on mobile with pushNotifications enabled.
 
-import Firebase from '@supabase/supabase-flutter';
-// For native FCM, import: import 'package:fcm/fcm.dart';
+import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class FcmService {
   final String baseUrl;
   final _storage = const FlutterSecureStorage();
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
   FcmService({String? baseUrl})
       : baseUrl = baseUrl ??
-            (const bool.fromEnvironment('dart.vm.product') == false
-                ? 'http://10.0.2.2:8000'
-                : 'https://your-api.com');
+          (kReleaseMode
+              ? 'https://your-api.com'
+              : 'http://10.0.2.2:8000');
+
+  // Initialize FCM and request permissions
+  Future<void> initFirebase() async {
+    await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+    
+    // Get FCM token
+    String? token = await FirebaseMessaging.instance.getToken();
+    if (token != null) {
+      await registerToken(token);
+    }
+    
+    // Handle token refresh
+    FirebaseMessaging.instance.onTokenRefresh.listen((String? newToken) {
+      if (newToken != null) {
+        registerToken(newToken);
+      }
+    });
+  }
 
   // Register FCM token with backend
   Future<void> registerToken(String token) async {
     try {
-      await http.post(
-        Uri.parse(\$"{baseUrl}/api/v1/push/register"),
-        headers: const {'Content-Type': 'application/json'},
-        body: JSON.encode({ 'fcm_token': token }),
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/v1/push/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'fcm_token': token,
+        }),
       );
-    } catch (_) {
+      
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        // ignore network errors on token registration
+        debugPrint('Failed to register FCM token: ${response.statusCode}');
+      }
+    } catch (e) {
       // ignore network errors on token registration
+      debugPrint('Error registering FCM token: $e');
     }
   }
 
