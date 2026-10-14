@@ -1,0 +1,7 @@
+import { remixClient } from "@remix-run/react";
+import * as ReactDOMClient from "react-dom/client";
+
+remixClient(({ document, url }) => {
+  const root = ReactDOMClient.createRoot(document);
+  root.render(document);
+});

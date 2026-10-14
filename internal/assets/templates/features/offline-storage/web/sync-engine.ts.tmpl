@@ -1,0 +1,275 @@
+// Sync engine for {% .ProjectName%}.
+// Handles bidirectional synchronization between client and server.
+// Implements change tracking, conflict detection, and sync orchestration.
+
+import { getDB, saveEntity, getEntityById, getAllEntities, deleteEntity } from './indexeddb';
+import { ConflictResolutionStrategy, resolveConflict } from './conflict-resolution';
+import { v4 as uuidv4 } from 'uuid';
+
+interface SyncMetadata {
+  entityType: string;
+  lastSyncTimestamp: number;
+  pendingChanges: number;
+}
+
+interface PendingMutation {
+  id: number;
+  entityType: string;
+  operation: 'create' | 'update' | 'delete';
+  entityId: string;
+  entityData: unknown;
+  timestamp: number;
+  retryCount: number;
+}
+
+interface SyncResponse {
+  success: boolean;
+  conflicts: Array<{
+    entityId: string;
+    clientData: unknown;
+    serverData: unknown;
+  }>;
+  serverTimestamp: number;
+}
+
+/**
+ * Get sync metadata for an entity type.
+ * @param entityType - Type of entity (e.g., 'users', 'posts')
+ * @returns Promise resolving to sync metadata
+ */
+export async function getSyncMetadata(
+  entityType: string
+): Promise<SyncMetadata> {
+  const db = await getDB();
+  const tx = db.transaction('sync_metadata', 'readonly');
+  const store = tx.objectStore('sync_metadata');
+  const metadata = await store.get(entityType);
+  
+  if (!metadata) {
+    // Initialize metadata if not present
+    const initialMetadata: SyncMetadata = {
+      entityType,
+      lastSyncTimestamp: 0,
+      pendingChanges: 0
+    };
+    await saveEntity('sync_metadata', initialMetadata);
+    return initialMetadata;
+  }
+  
+  return metadata;
+}
+
+/**
+ * Update sync metadata for an entity type.
+ * @param entityType - Type of entity
+ * @param updates - Partial updates to apply to metadata
+ * @returns Promise resolving when metadata is updated
+ */
+export async function updateSyncMetadata(
+  entityType: string,
+  updates: Partial<SyncMetadata>
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('sync_metadata', 'readwrite');
+  const store = tx.objectStore('sync_metadata');
+  const metadata = await store.get(entityType);
+  
+  if (metadata) {
+    await store.put({ ...metadata, ...updates });
+  } else {
+    await store.put({
+      entityType,
+      lastSyncTimestamp: updates.lastSyncTimestamp ?? 0,
+      pendingChanges: updates.pendingChanges ?? 0
+    });
+  }
+  
+  await tx.done;
+}
+
+/**
+ * Add a pending mutation to the queue.
+ * @param entityType - Type of entity
+ * @param operation - Type of mutation (create/update/delete)
+ * @param entityId - ID of the entity
+ * @param entityData - Entity data (for create/update) or null (for delete)
+ * @returns Promise resolving when mutation is queued
+ */
+export async function queueMutation(
+  entityType: string,
+  operation: 'create' | 'update' | 'delete',
+  entityId: string,
+  entityData: unknown = null
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('pending_mutations', 'readwrite');
+  const store = tx.objectStore('pending_mutations');
+  
+  const mutation: PendingMutation = {
+    id: 0, // Will be auto-generated
+    entityType,
+    operation,
+    entityId,
+    entityData,
+    timestamp: Date.now(),
+    retryCount: 0
+  };
+  
+  await store.add(mutation);
+  
+  // Update pending changes count
+  const metadata = await getSyncMetadata(entityType);
+  await updateSyncMetadata(entityType, {
+    pendingChanges: metadata.pendingChanges + 1
+  });
+  
+  await tx.done;
+}
+
+/**
+ * Get all pending mutations.
+ * @returns Promise resolving to array of pending mutations
+ */
+export async function getPendingMutations(): Promise<PendingMutation[]> {
+  const db = await getDB();
+  const tx = db.transaction('pending_mutations', 'readonly');
+  const store = tx.objectStore('pending_mutations');
+  return await store.getAll();
+}
+
+/**
+ * Remove a pending mutation from the queue.
+ * @param mutationId - ID of the mutation to remove
+ * @returns Promise resolving when mutation is removed
+ */
+export async function removePendingMutation(
+  mutationId: number
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('pending_mutations', 'readwrite');
+  const store = tx.objectStore('pending_mutations');
+  await store.delete(mutationId);
+  await tx.done;
+}
+
+/**
+ * Perform a sync operation with the server.
+ * @param entityType - Type of entity to sync
+ * @param apiClient - Function to make API calls
+ * @returns Promise resolving to sync response
+ */
+export async function performSync(
+  entityType: string,
+  apiClient: {
+    pushChanges: (changes: PendingMutation[]) => Promise<SyncResponse>;
+    pullChanges: (since: number) => Promise<{ 
+      entities: unknown[]; 
+      serverTimestamp: number 
+    }>;
+  }
+): Promise<SyncResponse> {
+  try {
+    // Get current sync metadata
+    const metadata = await getSyncMetadata(entityType);
+    
+    // Get pending mutations
+    const pendingMutations = await getPendingMutations();
+    
+    // Filter mutations for this entity type
+    const entityMutations = pendingMutations.filter(
+      m => m.entityType === entityType
+    );
+    
+    let conflicts: Array<{
+      entityId: string;
+      clientData: unknown;
+      serverData: unknown;
+    }> = [];
+    
+    // Push changes to server if there are any
+    if (entityMutations.length > 0) {
+      const pushResponse = await apiClient.pushChanges(entityMutations);
+      
+      // Handle any conflicts from the push
+      if (pushResponse.conflicts && pushResponse.conflicts.length > 0) {
+        conflicts = pushResponse.conflicts;
+        
+        // Resolve conflicts
+        for (const conflict of conflicts) {
+          const resolvedData = resolveConflict(
+            conflict.entityId,
+            conflict.clientData,
+            conflict.serverData,
+            ConflictResolutionStrategy.LAST_WRITE_WINS // Default strategy
+          );
+          
+          // Save resolved data back to local storage
+          await saveEntity(entityType, {
+            id: conflict.entityId,
+            ...resolvedData
+          } as any);
+        }
+      }
+    }
+    
+    // Pull changes from server
+    const pullResponse = await apiClient.pullChanges(
+      metadata.lastSyncTimestamp
+    );
+    
+    // Apply pulled changes to local storage
+    for (const entity of pullResponse.entities) {
+      await saveEntity(entityType, entity as any);
+    }
+    
+    // Clear processed mutations
+    for (const mutation of entityMutations) {
+      await removePendingMutation(mutation.id);
+    }
+    
+    // Update sync metadata
+    await updateSyncMetadata(entityType, {
+      lastSyncTimestamp: pullResponse.serverTimestamp,
+      pendingChanges: 0 // Assuming all pending mutations were processed
+    });
+    
+    return {
+      success: true,
+      conflicts,
+      serverTimestamp: pullResponse.serverTimestamp
+    };
+  } catch (error) {
+    console.error('Sync failed:', error);
+    return {
+      success: false,
+      conflicts: [],
+      serverTimestamp: Date.now()
+    };
+  }
+}
+
+/**
+ * Start automatic sync interval.
+ * @param entityType - Type of entity to sync
+ * @param apiClient - API client for sync operations
+ * @param intervalMs - Sync interval in milliseconds (default: 30000)
+ * @returns Function to stop the sync interval
+ */
+export function startAutoSync(
+  entityType: string,
+  apiClient: {
+    pushChanges: (changes: PendingMutation[]) => Promise<SyncResponse>;
+    pullChanges: (since: number) => Promise<{ 
+      entities: unknown[]; 
+      serverTimestamp: number 
+    }>;
+  },
+  intervalMs: number = 30000
+): () => void {
+  const syncInterval = setInterval(async () => {
+    await performSync(entityType, apiClient);
+  }, intervalMs);
+  
+  // Return a function to stop the interval
+  return () => clearInterval(syncInterval);
+}

@@ -1,0 +1,28 @@
+// Preload scripts can contain node.js APIs that are exposed to the renderer process.
+// We use a context bridge to safely expose certain APIs to the renderer process.
+
+const { contextBridge, ipcRenderer } = require('electron');
+
+// Expose protected methods that allow the renderer process to use
+// the ipcRenderer without exposing the entire object
+contextBridge.exposeInMainWorld(
+  'electronAPI',
+  {
+    // Example: send a message to the main process
+    sendMessage: (channel, data) => {
+      // Whitelist channels
+      let validChannels = ['toMain'];
+      if (validChannels.includes(channel)) {
+        ipcRenderer.send(channel, data);
+      }
+    },
+    // Example: receive a message from the main process
+    receiveMessage: (channel, func) => {
+      let validChannels = ['fromMain'];
+      if (validChannels.includes(channel)) {
+        // Deliberately strip event as it includes `sender`
+        ipcRenderer.on(channel, (event, ...args) => func(...args));
+      }
+    }
+  }
+);

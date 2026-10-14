@@ -1,0 +1,26 @@
+plugins {
+    kotlin("multiplatform")
+    kotlin("plugin.serialization")
+}
+
+kotlin {
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-stdlib-common")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+                implementation("io.insert-koin:koin-core:3.2.2")
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("io.mockk:mockk-common:1.13.9")
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}

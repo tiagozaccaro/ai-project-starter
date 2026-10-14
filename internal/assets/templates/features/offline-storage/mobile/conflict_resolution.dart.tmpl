@@ -1,0 +1,111 @@
+import 'dart:convert';
+
+// Conflict resolution strategies for {% .ProjectName%}.
+// Provides multiple strategies for resolving data conflicts
+// between client and server during synchronization.
+
+enum ConflictResolutionStrategy {
+  lastWriteWins,
+  serverWins,
+  clientWins,
+  merge,
+  manual
+}
+
+/**
+ * Resolve a conflict between client and server data.
+ * @param entityId - ID of the entity in conflict
+ * @param clientData - Data from the client
+ * @param serverData - Data from the server
+ * @param strategy - Conflict resolution strategy to use
+ * @param mergeFunction - Optional function to merge data (for merge strategy)
+ * @param manualResolver - Optional function to resolve manually
+ * @returns Resolved data
+ */
+dynamic resolveConflict(
+  String entityId,
+  dynamic clientData,
+  dynamic serverData,
+  ConflictResolutionStrategy strategy, {
+    Map<String, dynamic> Function(Map<String, dynamic>, Map<String, dynamic>)? mergeFunction,
+    Future<dynamic> Function(String, dynamic, dynamic)? manualResolver,
+  }) async {
+  switch (strategy) {
+    case ConflictResolutionStrategy.serverWins:
+      return serverData;
+    
+    case ConflictResolutionStrategy.clientWins:
+      return clientData;
+    
+    case ConflictResolutionStrategy.merge:
+      if (mergeFunction == null) {
+        throw ArgumentError('Merge function required for MERGE strategy');
+      }
+      return mergeFunction(clientData, serverData);
+    
+    case ConflictResolutionStrategy.manual:
+      if (manualResolver == null) {
+        throw ArgumentError('Manual resolver required for MANUAL strategy');
+      }
+      return await manualResolver(entityId, clientData, serverData);
+    
+    case ConflictResolutionStrategy.lastWriteWins:
+    default:
+      // Default to server wins for safety
+      // In a more complete implementation, you would compare actual timestamps
+      return serverData;
+  }
+}
+
+/**
+ * Resolve conflicts for multiple entities.
+ * @param conflicts - List of conflict objects
+ * @param strategy - Conflict resolution strategy to use
+ * @param mergeFunction - Optional function to merge data (for merge strategy)
+ * @param manualResolver - Optional function to resolve manually
+ * @returns List of resolved data objects
+ */
+Future<List<Map<String, dynamic>>> resolveConflicts(
+  List<Map<String, dynamic>> conflicts,
+  ConflictResolutionStrategy strategy, {
+    Map<String, dynamic> Function(Map<String, dynamic>, Map<String, dynamic>)? mergeFunction,
+    Future<dynamic> Function(String, dynamic, dynamic)? manualResolver,
+  }) async {
+  final resolvedDataList = <Map<String, dynamic>>[];
+  
+  for (final conflict in conflicts) {
+    final resolvedData = await resolveConflict(
+      conflict['entityId'] as String,
+      conflict['clientData'],
+      conflict['serverData'],
+      strategy,
+      mergeFunction: mergeFunction,
+      manualResolver: manualResolver,
+    );
+    
+    resolvedDataList.add({
+      'entityId': conflict['entityId'],
+      'resolvedData': resolvedData,
+    });
+  }
+  
+  return resolvedDataList;
+}
+
+/**
+ * Default merge function that shallow merges maps.
+ * Prefers server values when there are conflicts.
+ * @param clientData - Client data map
+ * @param serverData - Server data map
+ * @returns Merged data map
+ */
+Map<String, dynamic> defaultMergeFunction(
+    Map<String, dynamic> clientData,
+    Map<String, dynamic> serverData) {
+  if (clientData == null) return serverData;
+  if (serverData == null) return clientData;
+  
+  final merged = Map<String, dynamic>.from(clientData);
+  merged.addAll(serverData); // Server values overwrite client values
+  return merged;
+}

@@ -1,0 +1,49 @@
+import SwiftUI
+import shared
+
+@main
+struct iOSApp: App {
+    @StateObject private var viewModel = MainViewModel(repository: ItemRepository())
+
+    var body: some Scene {
+        WindowGroup {
+            NavigationView {
+                List(viewModel.items) { item in
+                    VStack(alignment: .leading) {
+                        Text(item.title)
+                            .font(.headline)
+                        Text(item.description)
+                            .font(.subheadline)
+                    }
+                    .padding()
+                }
+                .navigationTitle("{% .ProjectName%}")
+                .onAppear {
+                    viewModel.loadItems()
+                }
+            }
+        }
+    }
+}
+
+// ViewModel for managing UI-related data
+class MainViewModel: ObservableObject {
+    @Published var items: [Item] = []
+    private let repository: ItemRepository
+
+    init(repository: ItemRepository) {
+        self.repository = repository
+    }
+
+    func loadItems() {
+        // In a real application, you would use coroutines or dispatch queues
+        // For simplicity, we're just calling the suspend function directly
+        // In practice, you'd need to handle this properly with Kotlin coroutines on iOS
+        DispatchQueue.global().async {
+            let items = self.repository.getItems() // This is a simplification
+            DispatchQueue.main.async {
+                self.items = items
+            }
+        }
+    }
+}

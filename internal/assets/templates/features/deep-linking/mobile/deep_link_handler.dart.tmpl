@@ -1,0 +1,151 @@
+// Deep link handler for {% .ProjectName%}.
+// Uses go_router for deep linking on mobile apps.
+// When enabled on both web and mobile, provides consistent deep linking experience.
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class DeepLinkHandler {
+  final GoRouter router;
+
+  DeepLinkHandler({required this.router});
+
+  // Initialize deep link handling
+  Future<void> initialize() async {
+    // Listen for app state changes (when app is already running)
+    await _checkInitialUrl();
+    
+    // Listen for new links when app is backgrounded/terminated
+    // In a real implementation, you would add event listeners here
+    // for handling background URL handlers
+  }
+
+  // Check for initial URL state
+  Future<void> _checkInitialUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    final pendingUrl = prefs.getString('pending_url');
+    
+    if (pendingUrl != null) {
+      await prefs.remove('pending_url');
+      _handleDeepLink(pendingUrl);
+    }
+  }
+
+  // Handle deep link from external sources (web, other apps, notifications)
+  Future<void> handleDeepLink(String url) async {
+    // Parse the URL
+    final uri = Uri.parse(url);
+    final path = uri.path;
+    
+    if (path.isEmpty) {
+      // Home route
+      router.go('/');
+      return;
+    }
+    
+    // Extract path segments
+    final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+    
+    // Handle the deep link
+    await _processSegments(segments);
+  }
+
+  Future<void> _processSegments(List<String> segments) async {
+    if (segments.isEmpty) {
+      router.go('/');
+      return;
+    }
+
+    final firstSegment = segments.first;
+    
+    switch (firstSegment) {
+      case 'dashboard':
+        // Handle dashboard deep link
+        if (segments.length > 1) {
+          // Dashboard with specific item
+          final id = segments[1];
+          router.go('/dashboard/\$id');
+        } else {
+          router.go('/dashboard');
+        }
+        break;
+      case 'profile':
+        // Handle profile deep link
+        if (segments.length > 1) {
+          final userId = segments[1];
+          router.go('/profile/\$userId');
+        } else {
+          router.go('/profile');
+        }
+        break;
+      case 'settings':
+        // Handle settings deep link
+        router.go('/settings');
+        break;
+      default:
+        // Unrecognized deep link, navigate to error page or home
+        router.go('/error?message=Deep link not recognized');
+    }
+  }
+
+  // Store a pending deep link to handle when app launches
+  Future<void> storePendingDeepLink(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('pending_url', url);
+  }
+
+  // Clear any pending deep link
+  Future<void> clearPendingDeepLink() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('pending_url');
+  }
+
+  // Navigate to deep link immediately (if app is active)
+  void navigateTo(String url) {
+    // Check if the URL is from the same app (custom URL scheme)
+    if (url.startsWith('com.example.app://')) {
+      handleDeepLink(url.replace('com.example.app://', ''));
+    }
+  }
+}
+
+// Usage in a Flutter widget
+class DeepLinkAwareWidget extends StatefulWidget {
+  const DeepLinkAwareWidget({Key? key}) : super(key: key);
+
+  @override
+  State<DeepLinkAwareWidget> createState() => _DeepLinkAwareWidgetState();
+}
+
+class _DeepLinkAwareWidgetState extends State<DeepLinkAwareWidget> {
+  late DeepLinkHandler _deepLinkHandler;
+
+  @override
+  void initState() {
+    super.initState();
+    _deepLinkHandler = DeepLinkHandler(
+      router: GoRouter.of(context),
+    );
+    _initializeDeepLinks();
+  }
+
+  Future<void> _initializeDeepLinks() async {
+    await _deepLinkHandler.initialize();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Placeholder();
+  }
+}
+
+// Hook for widgets to listen to deep link changes
+StreamController<String> useDeepLinkController(WidgetController controller) {
+  final streamController = StreamController<String>();
+  
+  // In a real implementation, you would set up listeners here
+  // to handle deep link changes from external sources
+  
+  return streamController;
+}

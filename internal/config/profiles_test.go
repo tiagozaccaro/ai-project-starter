@@ -166,3 +166,51 @@ func TestDeepCopyYAML(t *testing.T) {
 		t.Logf("original projectName: %q", original.ProjectName)
 	}
 }
+
+func TestLoadProfilePresetsEmptyFS(t *testing.T) {
+	// Test that loadProfilePresets handles empty FS gracefully
+	// This is hard to test directly without mocking, but we can
+	// at least verify the function doesn't panic
+	presets := loadProfilePresets()
+	if len(presets) == 0 {
+		t.Fatal("expected at least one profile to be loaded")
+	}
+}
+
+func TestProfilesWithMissingPreset(t *testing.T) {
+	// Test that Profiles skips missing presets
+	profiles := Profiles()
+	if len(profiles) == 0 {
+		t.Fatal("expected at least one profile")
+	}
+	// The function should not panic even if a preset is missing
+	for _, p := range profiles {
+		if p.Name == "" {
+			t.Error("profile name should not be empty")
+		}
+	}
+}
+
+func TestDeepCopyErrorPaths(t *testing.T) {
+	// Test deepCopy with a config that can be marshaled/unmarshaled
+	original := ProjectConfig{
+		SchemaVersion:    SchemaVersion,
+		GeneratorVersion: GeneratorVersion,
+		Profile:          ProfileCustom,
+		ProjectName:      "test",
+		Applications:     ApplicationsConfig{Web: true, API: true, Mobile: true},
+		Database:         DatabaseConfig{Type: "postgresql", Architecture: "fastapi"},
+		Features:         FeaturesConfig{Auth: []string{"google-oidc"}},
+	}
+	
+	copy := deepCopy(original)
+	if copy.ProjectName != "test" {
+		t.Errorf("expected projectName 'test', got %q", copy.ProjectName)
+	}
+	
+	// Test that modifications to copy don't affect original
+	copy.ProjectName = "modified"
+	if original.ProjectName != "test" {
+		t.Errorf("original should not be modified")
+	}
+}

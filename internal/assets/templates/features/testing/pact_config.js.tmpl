@@ -1,0 +1,14 @@
+const { Pact } = require('@pact-foundation/pact');
+
+const provider = new Pact({
+  consumer: '{% .ProjectName%}-web',
+  provider: '{% .ProjectName%}-api',
+  port: 8080,
+  log: process.stdout,
+  logLevel: 'INFO',
+  dir: __dirname + '/pacts',
+  logLevel: 'INFO',
+  spec: 2,
+});
+
+module.exports = { provider };

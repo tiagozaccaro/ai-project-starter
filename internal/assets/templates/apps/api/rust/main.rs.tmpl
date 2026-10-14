@@ -1,0 +1,77 @@
+use actix_web::{get, post, put, delete, web, App, HttpResponse, HttpServer, Responder};
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct {% .ProjectName%} {
+    id: i32,
+    name: String,
+    value: String,
+}
+
+#[get("/health")]
+async fn health() -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "ok"
+    }))
+}
+
+#[get("/api/{% .ProjectName%}")]
+async get_{% .ProjectName%}s() -> impl Responder {
+    // In a real application, you would fetch data from a database
+    let {% .ProjectName%}s = vec![
+        {% .ProjectName%} {
+            id: 1,
+            name: "Example {% .ProjectName%}".to_string(),
+            value: "sample data".to_string(),
+        },
+    ];
+
+    HttpResponse::Ok().json({% .ProjectName%}s)
+}
+
+#[get("/api/{% .ProjectName%}/{id}")]
+async get_{% .ProjectName%}(path: web::Path<i32>) -> impl Responder {
+    let id = path.into_inner();
+    // In a real application, you would fetch the specific item from a database
+    HttpResponse::Ok().json(serde_json::json!({
+        "id": id,
+        "name": "Example {% .ProjectName%}",
+        "value": "sample data"
+    }))
+}
+
+#[post("/api/{% .ProjectName%}")]
+async create_{% .ProjectName%}(item: web::Json<{% .ProjectName%>}) -> impl Responder {
+    // In a real application, you would save the item to a database
+    HttpResponse::Created().json(item.into_inner())
+}
+
+#[put("/api/{% .ProjectName%}/{id}")]
+async update_{% .ProjectName%}(path: web::Path<i32>, item: web::Json<{% .ProjectName%>>) -> impl Responder {
+    let id = path.into_inner();
+    // In a real application, you would update the item in a database
+    HttpResponse::Ok().json(item.into_inner())
+}
+
+#[delete("/api/{% .ProjectName%}/{id}")]
+async delete_{% .ProjectName%}(path: web::Path<i32>) -> impl Responder {
+    let id = path.into_inner();
+    // In a real application, you would delete the item from a database
+    HttpResponse::NoContent().finish()
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .service(health)
+            .service(get_{% .ProjectName%}s)
+            .service(get_{% .ProjectName%})
+            .service(create_{% .ProjectName%})
+            .service(update_{% .ProjectName%})
+            .service(delete_{% .ProjectName%})
+    })
+    .bind(("127.0.0.1", 8080))?
+    .run()
+    .await
+}

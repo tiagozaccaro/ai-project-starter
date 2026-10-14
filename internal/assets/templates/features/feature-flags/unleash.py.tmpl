@@ -1,0 +1,144 @@
+"""Unleash feature flag integration for {% .ProjectName%}.
+Provides easy access to feature flags with caching and error handling.
+"""
+
+import os
+import time
+import logging
+from typing import Any, Dict, Optional
+import requests
+from functools import lru_cache
+
+logger = logging.getLogger(__name__)
+
+
+class FeatureFlagClient:
+    """Unleash feature flag client wrapper."""
+    
+    def __init__(self):
+        self.url = os.getenv("UNLEASH_URL")
+        self.token = os.getenv("UNLEASH_TOKEN")
+        self.app_name = os.getenv("UNLEASH_APP_NAME", "{% .ProjectName%}")
+        
+        if not self.url or not self.token:
+            logger.warning("UNLEASH_URL or UNLEASH_TOKEN not set; feature flags disabled")
+            self.enabled = False
+            return
+            
+        self.enabled = True
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": self.token,
+            "Content-Type": "application/json",
+        })
+        
+        # Cache for feature flags
+        self._flags_cache = {}
+        self._cache_timestamp = 0
+        self._cache_ttl = 10  # seconds
+        
+        logger.info("Unleash client initialized")
+    
+    def _fetch_flags(self) -> Dict[str, Any]:
+        """Fetch feature flags from Unleash server."""
+        try:
+            response = self.session.get(f"{self.url}/api/frontend/features")
+            response.raise_for_status()
+            data = response.json()
+            
+            # Convert to a dict keyed by feature name
+            flags = {}
+            for feature in data.get("features", []):
+                flags[feature["name"]] = feature
+            
+            return flags
+        except Exception as e:
+            logger.error(f"Failed to fetch feature flags from Unleash: {e}")
+            return self._flags_cache  # Return cached data on failure
+    
+    def _get_flags(self) -> Dict[str, Any]:
+        """Get feature flags, using cache if fresh enough."""
+        now = time.time()
+        if now - self._cache_timestamp > self._cache_ttl:
+            self._flags_cache = self._fetch_flags()
+            self._cache_timestamp = now
+        return self._flags_cache
+    
+    def is_enabled(self, flag_key: str, default: bool = False, context: Optional[Dict] = None) -> bool:
+        """Check if a feature flag is enabled."""
+        if not self.enabled:
+            return default
+            
+        try:
+            flags = self._get_flags()
+            flag = flags.get(flag_key)
+            
+            if not flag:
+                logger.warning(f"Feature flag {flag_key} not found")
+                return default
+            
+            # Check if flag is enabled
+            if not flag.get("enabled", False):
+                return False
+            
+            # In a real implementation, you would evaluate strategies based on context
+            # For now, we'll just return the enabled state
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error evaluating feature flag {flag_key}: {e}")
+            return default
+    
+    def variant(self, flag_key: str, default: Any, context: Optional[Dict] = None) -> Any:
+        """Get the variation value for a feature flag."""
+        if not self.enabled:
+            return default
+            
+        try:
+            flags = self._get_flags()
+            flag = flags.get(flag_key)
+            
+            if not flag:
+                logger.warning(f"Feature flag {flag_key} not found")
+                return default
+            
+            # For simplicity, we'll return the default value if enabled
+            # In a real implementation, you would evaluate variants based on context
+            if flag.get("enabled", False):
+                # Return first variant value or default
+                variants = flag.get("variants", [])
+                if variants:
+                    return variants[0].get("value", default)
+                return default
+            return default
+            
+        except Exception as e:
+            logger.error(f"Error getting variation for feature flag {flag_key}: {e}")
+            return default
+    
+    def close(self):
+        """Close the Unleash client session."""
+        if self.enabled and hasattr(self, 'session'):
+            self.session.close()
+
+
+# Global instance
+_feature_flag_client = None
+
+
+def get_feature_flag_client() -> FeatureFlagClient:
+    """Get or create the global feature flag client."""
+    global _feature_flag_client
+    if _feature_flag_client is None:
+        _feature_flag_client = FeatureFlagClient()
+    return _feature_flag_client
+
+
+def is_enabled(flag_key: str, default: bool = False, context: Optional[Dict] = None) -> bool:
+    """Check if a feature flag is enabled."""
+    return get_feature_flag_client().is_enabled(flag_key, default, context)
+
+
+def variation(flag_key: str, default: Any, context: Optional[Dict] = None) -> Any:
+    """Get the variation value for a feature flag."""
+    return get_feature_flag_client().variation(flag_key, default, context)

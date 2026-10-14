@@ -1,0 +1,117 @@
+"""Offline storage database helpers for {% .ProjectName%}.
+Provides database schema and migration utilities for offline storage data.
+"""
+
+from typing import Any, Dict, List, Optional
+
+# Database schema for offline storage data
+# Used when offlineStorage is enabled on both web and mobile
+
+TABLE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS offline_data (
+    id VARCHAR(255) PRIMARY KEY,
+    value JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+# Insert data into offline storage
+def insert_offline_data(conn, data: Dict[str, Any]) -> Optional[int]:
+    """Insert data into the offline_data table.
+    
+    Returns the row ID, or None if the insert failed.
+    """
+    try:
+        cursor = conn.execute(
+            """
+            INSERT INTO offline_data (id, value, created_at, updated_at)
+            VALUES (%s, %s, NOW(), NOW())
+            RETURNING id
+            """,
+            (data.get("id"), json.dumps(data.get("value", {}))),
+        )
+        return cursor.fetchone()[0]
+    except Exception as e:
+        print(f"Error inserting offline data: {e}")
+        return None
+
+# Get data from offline storage
+def get_offline_data(conn, data_id: str) -> Optional[Dict[str, Any]]:
+    """Get data from the offline_data table by ID.
+    
+    Returns the data dict, or None if not found.
+    """
+    try:
+        cursor = conn.execute(
+            """
+            SELECT value, created_at, updated_at
+            FROM offline_data
+            WHERE id = %s
+            """,
+            (data_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {"value": row[0], "created_at": row[1], "updated_at": row[2]}
+    except Exception as e:
+        print(f"Error getting offline data: {e}")
+        return None
+
+# Update data in offline storage
+def update_offline_data(conn, data: Dict[str, Any]) -> bool:
+    """Update data in the offline_data table.
+    
+    Returns True if the update was successful.
+    """
+    try:
+        cursor = conn.execute(
+            """
+            UPDATE offline_data
+            SET value = %s, updated_at = NOW()
+            WHERE id = %s
+            """,
+            (json.dumps(data.get("value", {})),
+             data.get("id")),
+        )
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Error updating offline data: {e}")
+        return False
+
+# Delete data from offline storage
+def delete_offline_data(conn, data_id: str) -> bool:
+    """Delete data from the offline_data table.
+    
+    Returns True if the delete was successful.
+    """
+    try:
+        cursor = conn.execute(
+            """
+            DELETE FROM offline_data
+            WHERE id = %s
+            """,
+            (data_id,),
+        )
+        return cursor.rowcount > 0
+    except Exception as e:
+        print(f"Error deleting offline data: {e}")
+        return False
+
+# Get all keys from offline storage
+def get_all_offline_keys(conn) -> List[str]:
+    """Get all keys from the offline_data table.
+    
+    Returns a list of data IDs.
+    """
+    try:
+        cursor = conn.execute(
+            """
+            SELECT id FROM offline_data
+            """
+        )
+        return [row[0] for row in cursor.fetchall()]
+    except Exception as e:
+        print(f"Error getting offline keys: {e}")
+        return []

@@ -1,0 +1,77 @@
+"""Push notification security helpers for {% .ProjectName%}.
+Provides utilities for validating and securing push notification operations.
+"""
+
+import hmac
+import hashlib
+from typing import Optional
+from fastapi import HTTPException, Header
+
+def verify_vapid_signature(
+    signature: str,
+    public_key: str,
+    payload: bytes,
+    private_key: str
+) -> bool:
+    """Verify VAPID signature for Web Push subscriptions.
+    
+    Args:
+        signature: The signature to verify
+        public_key: The VAPID public key
+        payload: The payload that was signed
+        private_key: The VAPID private key for verification
+        
+    Returns:
+        True if the signature is valid
+    """
+    # Implementation would use py_vapid library or similar
+    # For now, return a placeholder implementation
+    try:
+        # This is a simplified check - in production, use proper VAPID library
+        expected = hmac.new(
+            private_key.encode('utf-8'),
+            public_key.encode('utf-8') + payload,
+            hashlib.sha256
+        ).hexdigest()
+        return hmac.compare_digest(expected, signature)
+    except Exception:
+        return False
+
+def verify_fcm_token(token: str, server_key: str) -> bool:
+    """Verify FCM token format (basic validation).
+    
+    Args:
+        token: The FCM token to validate
+        server_key: The FCM server key
+        
+    Returns:
+        True if the token appears valid
+    """
+    # Basic FCM token validation
+    # FCM tokens are typically very long strings
+    if not token or len(token) < 100:
+        return False
+    
+    # In production, you might validate against Firebase API
+    # For now, just check length and basic format
+    return len(token) > 100 and token.startswith(('AAA', 'APA', 'AP'))
+
+def validate_push_notification_request(
+    request_data: dict,
+    required_fields: list = ['title', 'body']
+) -> Optional[str]:
+    """Validate a push notification request.
+    
+    Args:
+        request_data: The request data to validate
+        required_fields: List of required fields
+        
+    Returns:
+        Error message if validation fails, None if valid
+    """
+    for field in required_fields:
+        if field not in request_data or not request_data[field]:
+            return f"Missing required field: {field}"
+    
+    # Additional validation can go here
+    return None

@@ -13,3 +13,7 @@ database:
 features:
   database.migrations: true
   testing: true
+  offlineStorage: false
+  pushNotifications: false
+  stateManagement: false
+  deepLinking: false

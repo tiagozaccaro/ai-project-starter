@@ -1,0 +1,27 @@
+import { TauriPlugin } from '@tauri-apps/api';
+
+// In a real application, you would set up your frontend framework here
+// For example, with React:
+// import { createRoot } from 'react-dom/client'
+// import App from './App'
+
+async function main() {
+  // Initialize any Tauri plugins if needed
+  // const plugin = await TauriPlugin.<PluginName>::init();
+
+  // Set up your frontend framework
+  // const container = document.getElementById('root');
+  // if (container) {
+  //   const root = createRoot(container);
+  //   root.render(<App />);
+  // }
+
+  console.log('Tauri application started');
+}
+
+// Wait for the DOM to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', main);
+} else {
+  main();
+}

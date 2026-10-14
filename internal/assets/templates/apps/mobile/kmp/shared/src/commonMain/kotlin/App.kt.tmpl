@@ -1,0 +1,27 @@
+package org.example.app
+
+/**
+ * A simple data class representing an item
+ */
+data class Item(
+    val id: String,
+    val title: String,
+    val description: String
+)
+
+/**
+ * A repository for fetching items
+ * In a real application, this would fetch data from an API
+ */
+class ItemRepository {
+    suspend fun getItems(): List<Item> {
+        // Simulate network delay
+        delay(500)
+        
+        return listOf(
+            Item("1", "First Item", "This is the first item"),
+            Item("2", "Second Item", "This is the second item"),
+            Item("3", "Third Item", "This is the third item")
+        )
+    }
+}

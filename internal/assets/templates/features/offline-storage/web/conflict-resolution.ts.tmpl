@@ -1,0 +1,121 @@
+// Conflict resolution strategies for {% .ProjectName%}.
+// Provides multiple strategies for resolving data conflicts
+// between client and server during synchronization.
+
+export type ConflictResolutionStrategy =
+  | 'LAST_WRITE_WINS'
+  | 'SERVER_WINS'
+  | 'CLIENT_WINS'
+  | 'MERGE'
+  | 'MANUAL';
+
+interface ConflictResolutionOptions {
+  strategy?: ConflictResolutionStrategy;
+  mergeFunction?: (clientData: unknown, serverData: unknown) => unknown;
+  manualResolver?: (entityId: string, clientData: unknown, serverData: unknown) => Promise<unknown>;
+}
+
+/**
+ * Resolve a conflict between client and server data.
+ * @param entityId - ID of the entity in conflict
+ * @param clientData - Data from the client
+ * @param serverData - Data from the server
+ * @param options - Conflict resolution options
+ * @returns Resolved data
+ */
+export function resolveConflict(
+  entityId: string,
+  clientData: unknown,
+  serverData: unknown,
+  options: ConflictResolutionOptions = {}
+): unknown {
+  const {
+    strategy = 'LAST_WRITE_WINS',
+    mergeFunction,
+    manualResolver
+  } = options;
+  
+  switch (strategy) {
+    case 'SERVER_WINS':
+      return serverData;
+    
+    case 'CLIENT_WINS':
+      return clientData;
+    
+    case 'MERGE':
+      if (!mergeFunction) {
+        throw new Error('Merge function required for MERGE strategy');
+      }
+      return mergeFunction(clientData, serverData);
+    
+    case 'MANUAL':
+      if (!manualResolver) {
+        throw new Error('Manual resolver required for MANUAL strategy');
+      }
+      // Note: This is synchronous for simplicity, but in practice
+      // you might want to handle this asynchronously
+      return manualResolver(entityId, clientData, serverData);
+    
+    case 'LAST_WRITE_WINS':
+    default:
+      // For simplicity, we'll use a basic timestamp comparison
+      // In a real implementation, you'd compare actual timestamps
+      // from the client and server data
+      return serverData; // Default to server wins for safety
+  }
+}
+
+/**
+ * Resolve conflicts for multiple entities.
+ * @param conflicts - Array of conflict objects
+ * @param options - Conflict resolution options
+ * @returns Array of resolved data objects
+ */
+export function resolveConflicts(
+  conflicts: Array<{
+    entityId: string;
+    clientData: unknown;
+    serverData: unknown;
+  }>,
+  options: ConflictResolutionOptions = {}
+): Array<{ entityId: string; resolvedData: unknown }> {
+  return conflicts.map(conflict => ({
+    entityId: conflict.entityId,
+    resolvedData: resolveConflict(
+      conflict.entityId,
+      conflict.clientData,
+      conflict.serverData,
+      options
+    )
+  }));
+}
+
+/**
+ * Default merge function that shallow merges objects.
+ * Prefers server values when there are conflicts.
+ * @param clientData - Client data object
+ * @param serverData - Server data object
+ * @returns Merged data object
+ */
+export function defaultMergeFunction(
+  clientData: unknown,
+  serverData: unknown
+): unknown {
+  if (typeof clientData !== 'object' || clientData === null ||
+      typeof serverData !== 'object' || serverData === null) {
+    return serverData; // Default to server for non-objects
+  }
+  
+  const clientObj = clientData as Record<string, unknown>;
+  const serverObj = serverData as Record<string, unknown>;
+  
+  // Start with client data
+  const merged = { ...clientObj };
+  
+  // Overlay server data (server wins in case of conflict)
+  for (const key in serverObj) {
+    merged[key] = serverObj[key];
+  }
+  
+  return merged;
+}

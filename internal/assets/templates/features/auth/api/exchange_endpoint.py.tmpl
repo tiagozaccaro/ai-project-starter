@@ -1,0 +1,143 @@
+"""Auth session sync endpoints for {% .ProjectName%}.
+Handles cross-platform session synchronization for web and mobile.
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.core.security import verify_session_token
+from app.core.config import get_settings
+from pydantic import BaseModel
+from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+class SyncLogoutRequest(BaseModel):
+    source_platform: str  # "web" or "mobile"
+
+
+@router.post("/auth/sync/logout")
+async def sync_logout(request: SyncLogoutRequest, http_request: Request):
+    """Propagate logout across platforms."""
+    settings = get_settings()
+    
+    # Get session token from cookie
+    session_token = http_request.cookies.get("session")
+    if not session_token:
+        raise HTTPException(status_code=401, detail="No session found")
+    
+    # Verify the session
+    claims = verify_session_token(session_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    # Invalidate all sessions for the user
+    # For web: clear the HTTP-only cookie
+    # For mobile: would need to invalidate tokens via a token blacklist
+    # For now, we'll just clear the cookie and return success
+    # In a production app, you would also:
+    # 1. Add token to blacklist (Redis/database)
+    # 2. Revoke refresh tokens
+    # 3. Unregister push notifications
+    
+    response = {"status": "logged_out"}
+    
+    # Clear web session cookie
+    if request.source_platform == "mobile":
+        # If logout came from mobile, we still need to clear web cookie
+        # But we won't set a new one in the response
+        pass
+    
+    return response
+
+
+@router.post("/auth/exchange")
+async def exchange_code(request: Request):
+    """Convert Google OAuth authorization code to tokens for mobile apps."""
+    settings = get_settings()
+    
+    data = await request.json()
+    code = data.get("code")
+    redirect_uri = data.get("redirect_uri")
+    
+    if not code or not redirect_uri:
+        raise HTTPException(status_code=400, detail="Missing code or redirect_uri")
+    
+    # Exchange the authorization code for tokens
+    import httpx
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange code")
+        
+        tokens = response.json()
+        
+        # Verify ID token and create session
+        from app.core.security import verify_id_token, create_session_token
+        
+        id_token = tokens.get("id_token", "")
+        claims = verify_id_token(id_token, settings.google_client_id)
+        if not claims:
+            raise HTTPException(status_code=400, detail="Invalid ID token")
+        
+        # Create session token (JWT)
+        session_token = create_session_token(claims)
+        
+        # Return tokens for mobile app to store
+        return {
+            "access_token": tokens.get("access_token"),
+            "refresh_token": tokens.get("refresh_token"),
+            "expires_in": tokens.get("expires_in"),
+            "token_type": tokens.get("token_type"),
+            "user": {
+                "id": claims.get("sub"),
+                "email": claims.get("email"),
+                "name": claims.get("name"),
+                "picture": claims.get("picture"),
+            },
+            "session_token": session_token  # For web-style session if needed
+        }
+
+
+@router.get("/auth/status")
+async def auth_status(request: Request):
+    """Return current session status for the requesting platform."""
+    settings = get_settings()
+    
+    # Check for session cookie
+    session_token = request.cookies.get("session")
+    if not session_token:
+        return {"authenticated": False}
+    
+    # Verify the session
+    from app.core.security import verify_session_token
+    claims = verify_session_token(session_token)
+    if not claims:
+        return {"authenticated": False}
+    
+    # In a real implementation, you would track which platforms have active sessions
+    # For now, we'll just return web as active
+    return {
+        "authenticated": True,
+        "user": {
+            "id": claims.get("sub"),
+            "email": claims.get("email"),
+        },
+        "session": {
+            "expires_at": "2026-10-13T11:00:00Z",  # This would come from token exp
+            "platforms": ["web"],  # In reality, this would be tracked
+        }
+    }

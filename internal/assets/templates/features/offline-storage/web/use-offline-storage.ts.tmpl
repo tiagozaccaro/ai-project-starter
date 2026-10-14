@@ -1,0 +1,46 @@
+// Offline storage hook for {% .ProjectName%}.
+// Uses IndexedDB (via idb library) for browser-based storage,
+// with fallback to localStorage.
+// When enabled on both web and mobile, provides offline-first data persistence.
+
+export function useOfflineStorage() {
+  const db = idb.openDB('offline-storage', 1, {
+    upgrade(db) {
+      db.createCollection('data', {
+        primaryKey: 'id',
+      });
+    },
+  });
+
+  const [storedData, setStoredData] = useState({});
+
+  const loadData = useAsync(async () => {
+    const tx = db.transaction('data', 'readonly');
+    const collection = tx.collection('data');
+    const data = await collection.getAll();
+    setStoredData(data.reduce((acc, item) => {
+      acc[item.id] = item.value;
+      return acc;
+    }, {}));
+  }, []);
+
+  const saveData = useCallback(async (id: string, value: any) => {
+    const tx = db.transaction('data', 'readwrite');
+    const collection = tx.collection('data');
+    await collection.put({ id, value }, id);
+    await tx.done();
+    setStoredData({ ...storedData, [id]: value });
+  }, [storedData]);
+
+  const removeData = useCallback(async (id: string) => {
+    const tx = db.transaction('data', 'readwrite');
+    const collection = tx.collection('data');
+    await collection.delete(id);
+    await tx.done();
+    const newData = { ...storedData };
+    delete newData[id];
+    setStoredData(newData);
+  }, [storedData]);
+
+  return { storedData, loadData, saveData, removeData };
+}
