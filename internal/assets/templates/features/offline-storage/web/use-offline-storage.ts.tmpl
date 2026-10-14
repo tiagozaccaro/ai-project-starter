@@ -1,46 +1,119 @@
-// Offline storage hook for {% .ProjectName%}.
-// Uses IndexedDB (via idb library) for browser-based storage,
-// with fallback to localStorage.
-// When enabled on both web and mobile, provides offline-first data persistence.
+import { useEffect, useState } from 'react';
+import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { useAppConfig } from '@/hooks/use-app-config';
+
+interface OfflineStorageSchema extends DBSchema {
+  offlineData: {
+    key: string; // entityId
+    value: {
+      entityType: string;
+      entityId: string;
+      value: any;
+      createdAt: number;
+      updatedAt: number;
+    };
+    indexes: {
+      'by-entity-type': string;
+    };
+  };
+  syncMetadata: {
+    key: string; // entityType
+    value: {
+      entityType: string;
+      lastSyncTimestamp: number;
+      pendingChanges: number;
+    };
+  };
+  pendingMutations: {
+    key: number; // auto-increment id
+    value: {
+      id: number;
+      entityType: string;
+      operation: 'create' | 'update' | 'delete';
+      entityId: string;
+      entityData: any;
+      timestamp: number;
+      retryCount: number;
+    };
+    indexes: {
+      'by-entity-type': string;
+      'by-timestamp': number;
+    };
+  };
+}
 
 export function useOfflineStorage() {
-  const db = idb.openDB('offline-storage', 1, {
-    upgrade(db) {
-      db.createCollection('data', {
-        primaryKey: 'id',
+  const { offlineStorage } = useAppConfig();
+  const [db, setDb] = useState<IDBPDatabase<OfflineStorageSchema> | null>(null);
+
+  useEffect(() => {
+    if (!offlineStorage.enabled) return;
+
+    const dbPromise = openDB<OfflineStorageSchema>('offline-storage', 1, {
+      upgrade(db) {
+        db.createObjectStore('offlineData', { keyPath: 'entityId' })
+          .createIndex('by-entity-type', 'entityType');
+        db.createObjectStore('syncMetadata', { keyPath: 'entityType' });
+        db.createObjectStore('pendingMutations', { keyPath: 'id', autoIncrement: true })
+          .createIndex('by-entity-type', 'entityType')
+          .createIndex('by-timestamp', 'timestamp');
+      },
+    });
+
+    dbPromise.then(setDb);
+  }, [offlineStorage.enabled]);
+
+  const saveData = async (entityType: string, entityId: string, value: any) => {
+    if (!db) return;
+    const tx = db.transaction('offlineData', 'readwrite');
+    const store = tx.objectStore('offlineData');
+    await store.put({
+      entityType,
+      entityId,
+      value,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+    await tx.done;
+  };
+
+  const getData = async (entityType: string, entityId: string) => {
+    if (!db) return null;
+    const tx = db.transaction('offlineData', 'readonly');
+    const store = tx.objectStore('offlineData');
+    const data = await store.get(entityId);
+    await tx.done;
+    return data;
+  };
+
+  const updateData = async (entityType: string, entityId: string, value: any) => {
+    if (!db) return;
+    const tx = db.transaction('offlineData', 'readwrite');
+    const store = tx.objectStore('offlineData');
+    const existing = await store.get(entityId);
+    if (existing) {
+      await store.put({
+        ...existing,
+        value,
+        updatedAt: Date.now()
       });
-    },
-  });
+    }
+    await tx.done;
+  };
 
-  const [storedData, setStoredData] = useState({});
+  const deleteData = async (entityType: string, entityId: string) => {
+    if (!db) return;
+    const tx = db.transaction('offlineData', 'readwrite');
+    const store = tx.objectStore('offlineData');
+    await store.delete(entityId);
+    await tx.done;
+  };
 
-  const loadData = useAsync(async () => {
-    const tx = db.transaction('data', 'readonly');
-    const collection = tx.collection('data');
-    const data = await collection.getAll();
-    setStoredData(data.reduce((acc, item) => {
-      acc[item.id] = item.value;
-      return acc;
-    }, {}));
-  }, []);
-
-  const saveData = useCallback(async (id: string, value: any) => {
-    const tx = db.transaction('data', 'readwrite');
-    const collection = tx.collection('data');
-    await collection.put({ id, value }, id);
-    await tx.done();
-    setStoredData({ ...storedData, [id]: value });
-  }, [storedData]);
-
-  const removeData = useCallback(async (id: string) => {
-    const tx = db.transaction('data', 'readwrite');
-    const collection = tx.collection('data');
-    await collection.delete(id);
-    await tx.done();
-    const newData = { ...storedData };
-    delete newData[id];
-    setStoredData(newData);
-  }, [storedData]);
-
-  return { storedData, loadData, saveData, removeData };
+  return {
+    saveData,
+    getData,
+    updateData,
+    deleteData,
+    db
+  };
 }

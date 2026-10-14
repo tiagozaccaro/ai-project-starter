@@ -1,0 +1,203 @@
+"""Unified notification service for {% .ProjectName%}.
+Dispatches push notifications to both web (Web Push API/VAPID) and mobile (FCM).
+"""
+
+import json
+import logging
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+
+from app.core.config import get_settings
+from app.core.security import verify_vapid_signature, verify_fcm_token
+from app.api.v1.vapid_keys import get_vapid_public_key
+from app.api.v1.fcm_client import FcmClient
+from app.api.v1.topics import subscribe_to_topic, unsubscribe_from_topic
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class NotificationPayload:
+    """Payload for a push notification."""
+    title: str
+    body: str
+    data: Optional[Dict[str, Any]] = None
+    topic: Optional[str] = None
+    token: Optional[str] = None  # For direct token targeting
+
+
+class NotificationService:
+    """Unified service for sending push notifications to web and mobile platforms."""
+
+    def __init__(self):
+        self.settings = get_settings()
+        self.fcm_client = FcmClient()
+        self._webpush_subscriptions: Dict[str, Dict[str, Any]] = {}  # In-memory store; replace with DB in production
+
+    async def send_to_web(
+        self,
+        subscription: Dict[str, Any],
+        payload: NotificationPayload,
+    ) -> bool:
+        """
+        Send a push notification to a web client via Web Push API (VAPID).
+
+        Args:
+            subscription: The push subscription object from the client
+            payload: The notification payload
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            # Import pywebpush here to avoid hard dependency if not used
+            from pywebpush import webpush, WebPushException
+
+            vapid_private_key = self.settings.vapid_private_key
+            vapid_public_key = self.settings.vapid_public_key
+
+            if not vapid_private_key or not vapid_public_key:
+                logger.error("VAPID keys not configured")
+                return False
+
+            # Prepare the notification payload
+            notification_data = {
+                "title": payload.title,
+                "body": payload.body,
+            }
+            if payload.data:
+                notification_data["data"] = payload.data
+
+            webpush(
+                subscription_info=subscription,
+                data=json.dumps(notification_data),
+                vapid_private_key=vapid_private_key,
+                vapid_claims={
+                    "sub": f"mailto:{self.settings.admin_email or 'admin@example.com'}"
+                }
+            )
+            return True
+        except ImportError:
+            logger.error("pywebpush not installed. Install with: pip install pywebpush")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to send web push notification: {e}")
+            return False
+
+    async def send_to_mobile(
+        self,
+        token: str,
+        payload: NotificationPayload,
+    ) -> bool:
+        """
+        Send a push notification to a mobile device via FCM.
+
+        Args:
+            token: The FCM registration token
+            payload: The notification payload
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        if not verify_fcm_token(token, self.settings.fcm_server_key or ""):
+            logger.error(f"Invalid FCM token format: {token[:20]}...")
+            return False
+
+        return await self.fcm_client.send_notification(
+            token=token,
+            title=payload.title,
+            body=payload.body,
+            data=payload.data,
+        )
+
+    async def send_to_topic(
+        self,
+        topic: str,
+        payload: NotificationPayload,
+    ) -> Dict[str, Any]:
+        """
+        Send a push notification to all devices subscribed to a topic.
+
+        Args:
+            topic: The topic name
+            payload: The notification payload
+
+        Returns:
+            Dictionary with success/failure counts
+        """
+        return await self.fcm_client.send_multicast(
+            tokens=[],  # FCM topic messaging doesn't use token list directly
+            title=payload.title,
+            body=payload.body,
+            data=payload.data,
+        )
+
+    async def send_to_all(
+        self,
+        payload: NotificationPayload,
+        web_subscriptions: Optional[List[Dict[str, Any]]] = None,
+        mobile_tokens: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Send a push notification to all registered devices (web and mobile).
+
+        Args:
+            payload: The notification payload
+            web_subscriptions: List of web push subscriptions (if not provided, uses stored)
+            mobile_tokens: List of FCM tokens (if not provided, would need to fetch from DB)
+
+        Returns:
+            Dictionary with results for each platform
+        """
+        results = {
+            "web": {"success": 0, "failure": 0},
+            "mobile": {"success": 0, "failure": 0},
+        }
+
+        # Send to web subscriptions
+        subscriptions = web_subscriptions or list(self._webpush_subscriptions.values())
+        for sub in subscriptions:
+            success = await self.send_to_web(sub, payload)
+            if success:
+                results["web"]["success"] += 1
+            else:
+                results["web"]["failure"] += 1
+
+        # Send to mobile tokens
+        tokens = mobile_tokens or []  # In production, fetch from database
+        for token in tokens:
+            success = await self.send_to_mobile(token, payload)
+            if success:
+                results["mobile"]["success"] += 1
+            else:
+                results["mobile"]["failure"] += 1
+
+        return results
+
+    def store_web_subscription(self, user_id: str, subscription: Dict[str, Any]) -> None:
+        """Store a web push subscription for a user."""
+        self._webpush_subscriptions[user_id] = subscription
+
+    def remove_web_subscription(self, user_id: str) -> None:
+        """Remove a web push subscription for a user."""
+        self._webpush_subscriptions.pop(user_id, None)
+
+    async def subscribe_to_topic(self, token: str, topic: str) -> Dict[str, str]:
+        """Subscribe a device to a topic."""
+        return await subscribe_to_topic({"token": token, "topic": topic})
+
+    async def unsubscribe_from_topic(self, token: str, topic: str) -> Dict[str, str]:
+        """Unsubscribe a device from a topic."""
+        return await unsubscribe_from_topic({"token": token, "topic": topic})
+
+
+# Global notification service instance
+_notification_service: Optional[NotificationService] = None
+
+
+def get_notification_service() -> NotificationService:
+    """Get the global notification service instance."""
+    global _notification_service
+    if _notification_service is None:
+        _notification_service = NotificationService()
+    return _notification_service

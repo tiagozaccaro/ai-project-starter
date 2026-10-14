@@ -1,0 +1,281 @@
+// Router configuration for {% .ProjectName%} mobile app.
+// Uses go_router for declarative routing with deep linking support.
+
+import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'deep_link_handler.dart';
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final deepLinkHandler = ref.watch(deepLinkHandlerProvider);
+  return deepLinkHandler.router;
+});
+
+final deepLinkHandlerProvider = Provider<DeepLinkHandler>((ref) {
+  return DeepLinkHandler();
+});
+
+class DeepLinkHandler {
+  late final GoRouter router;
+  
+  DeepLinkHandler() {
+    router = _createRouter();
+  }
+  
+  GoRouter _createRouter() {
+    return GoRouter(
+      initialLocation: '/',
+      debugLogDiagnostics: true,
+      routes: [
+        GoRoute(
+          path: '/',
+          name: 'home',
+          builder: (context, state) => const HomeScreen(),
+        ),
+        GoRoute(
+          path: '/login',
+          name: 'login',
+          builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          name: 'register',
+          builder: (context, state) => const RegisterScreen(),
+        ),
+        GoRoute(
+          path: '/dashboard',
+          name: 'dashboard',
+          builder: (context, state) => const DashboardScreen(),
+          routes: [
+            GoRoute(
+              path: ':id',
+              name: 'dashboard-detail',
+              builder: (context, state) => DashboardDetailScreen(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/profile',
+          name: 'profile',
+          builder: (context, state) => const ProfileScreen(),
+          routes: [
+            GoRoute(
+              path: ':id',
+              name: 'profile-detail',
+              builder: (context, state) => ProfileDetailScreen(
+                id: state.pathParameters['id']!,
+              ),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/settings',
+          name: 'settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
+        GoRoute(
+          path: '/items/:id',
+          name: 'item-detail',
+          builder: (context, state) => ItemDetailScreen(
+            id: state.pathParameters['id']!,
+          ),
+        ),
+      ],
+      redirect: (context, state) async {
+        // Auth-gated routes
+        final authState = context.read(authStateProvider);
+        final isAuthRoute = state.matchedLocation == '/login' || 
+                           state.matchedLocation == '/register';
+        
+        final requiresAuth = state.matchedLocation.startsWith('/dashboard') ||
+                            state.matchedLocation.startsWith('/profile') ||
+                            state.matchedLocation.startsWith('/settings') ||
+                            state.matchedLocation.startsWith('/items');
+        
+        if (requiresAuth && !authState.authenticated) {
+          return '/login?redirect=${Uri.encodeComponent(state.matchedLocation)}';
+        }
+        
+        if (isAuthRoute && authState.authenticated) {
+          return '/';
+        }
+        
+        return null;
+      },
+      errorBuilder: (context, state) => const ErrorScreen(),
+    );
+  }
+  
+  // Handle deep link from external sources
+  Future<void> handleDeepLink(String url) async {
+    try {
+      // Parse the URL
+      final uri = Uri.parse(url);
+      final path = uri.path;
+      
+      if (path.isEmpty || path == '/') {
+        router.go('/');
+        return;
+      }
+      
+      // Extract path segments
+      final segments = path.split('/').where((s) => s.isNotEmpty).toList();
+      
+      // Process the segments
+      await _processSegments(segments, uri.queryParameters);
+    } catch (e) {
+      // Handle parsing errors
+      router.go('/error?message=Invalid deep link');
+    }
+  }
+  
+  Future<void> _processSegments(List<String> segments, Map<String, String> queryParams) async {
+    if (segments.isEmpty) {
+      router.go('/');
+      return;
+    }
+    
+    final firstSegment = segments.first;
+    
+    switch (firstSegment) {
+      case 'dashboard':
+        if (segments.length > 1) {
+          router.go('/dashboard/${segments[1]}');
+        } else {
+          router.go('/dashboard');
+        }
+        break;
+      case 'profile':
+        if (segments.length > 1) {
+          router.go('/profile/${segments[1]}');
+        } else {
+          router.go('/profile');
+        }
+        break;
+      case 'settings':
+        router.go('/settings');
+        break;
+      case 'item':
+      case 'items':
+        if (segments.length > 1) {
+          router.go('/items/${segments[1]}');
+        }
+        break;
+      case 'login':
+        router.go('/login');
+        break;
+      case 'register':
+        router.go('/register');
+        break;
+      default:
+        // Try to match as a route
+        final routeName = segments.join('/');
+        if (router.canPop()) {
+          router.go('/$routeName');
+        } else {
+          router.go('/error?message=Route not found: $routeName');
+        }
+    }
+  }
+  
+  // Initialize deep link handling
+  Future<void> initialize() async {
+    // Listen for initial link if app was opened via deep link
+    // This would use app_links or uni_links package in a real implementation
+    await _checkInitialUrl();
+  }
+  
+  Future<void> _checkInitialUrl() async {
+    // In a real implementation, this would get the initial link
+    // that launched the app
+    // final initialLink = await AppLinks().getInitialLink();
+    // if (initialLink != null) {
+    //   await handleDeepLink(initialLink.toString());
+    // }
+  }
+  
+  // Store a pending deep link to handle when app launches
+  Future<void> storePendingDeepLink(String url) async {
+    // Store in shared preferences for next launch
+    // final prefs = await SharedPreferences.getInstance();
+    // await prefs.setString('pending_deep_link', url);
+  }
+  
+  // Navigate to deep link immediately (if app is active)
+  void navigateTo(String url) {
+    // Check if the URL is from the same app (custom URL scheme)
+    final scheme = 'myapp'; // Would come from config
+    if (url.startsWith('$scheme://')) {
+      handleDeepLink(url);
+    }
+  }
+}
+
+// Placeholder screen widgets (would be implemented in the generated app)
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class LoginScreen extends StatelessWidget {
+  const LoginScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class RegisterScreen extends StatelessWidget {
+  const RegisterScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class DashboardDetailScreen extends StatelessWidget {
+  final String id;
+  const DashboardDetailScreen({Key? key, required this.id}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class ProfileDetailScreen extends StatelessWidget {
+  final String id;
+  const ProfileDetailScreen({Key? key, required this.id}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class ItemDetailScreen extends StatelessWidget {
+  final String id;
+  const ItemDetailScreen({Key? key, required this.id}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+class ErrorScreen extends StatelessWidget {
+  const ErrorScreen({Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => const Placeholder();
+}
+
+// Imports needed
+import 'package:flutter/material.dart';
+import 'riverpod_provider.dart';

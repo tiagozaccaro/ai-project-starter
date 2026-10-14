@@ -1,0 +1,40 @@
+"""Deep link routes endpoint for {% .ProjectName%}.
+Provides deep link routes configuration for web and mobile clients.
+"""
+
+from fastapi import APIRouter, Depends
+from typing import List, Dict, Any
+from app.core.config import get_settings
+from sqlalchemy.orm import Session
+from app.database import get_db
+
+router = APIRouter(prefix="/deep-linking/routes", tags=["deep-linking"])
+
+
+@router.get("")
+async def get_routes(
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """
+    Get all deep link routes configuration.
+    
+    Returns a list of route configurations for client-side routing.
+    """
+    settings = get_settings()
+    
+    # In a full implementation, we would query the database for deep link routes
+    # For now, we'll return the routes from configuration
+    
+    routes = []
+    if hasattr(settings, 'deep_link_routes') and settings.deep_link_routes:
+        for route_name, route_config in settings.deep_link_routes.items():
+            routes.append({
+                'routeName': route_name,
+                'pattern': route_config.get('pattern', ''),
+                'target': route_config.get('target', ''),
+                'requiresAuth': route_config.get('requiresAuth', False)
+            })
+    
+    # If no routes configured, return empty list
+    # In a real app, this would come from database configuration
+    return routes

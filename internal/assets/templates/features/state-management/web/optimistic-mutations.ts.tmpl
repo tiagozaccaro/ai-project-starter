@@ -1,0 +1,139 @@
+import { useMutation, useQueryClient, QueryKey } from '@tanstack/react-query';
+import { getQueryClient } from './query-client';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+interface OptimisticOptions<TVariables, TData> {
+  mutationKey?: string[];
+  endpoint: string;
+  method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  onMutate?: (variables: TVariables) => Promise<{ previousData?: any } | void>;
+  onError?: (error: Error, variables: TVariables, context?: { previousData?: any }) => void;
+  onSettled?: (data: TData | undefined, error: Error | null, variables: TVariables, context?: { previousData?: any }) => void;
+  invalidationKeys?: QueryKey[];
+  // Optimistic update function - returns the optimistic data
+  getOptimisticData?: (variables: TVariables) => any;
+  // Query key to optimistically update
+  queryKeyToUpdate?: QueryKey;
+}
+
+export function useOptimisticMutation<TVariables, TData = any>({
+  mutationKey,
+  endpoint,
+  method = 'POST',
+  onMutate,
+  onError,
+  onSettled,
+  invalidationKeys = [],
+  getOptimisticData,
+  queryKeyToUpdate,
+}: OptimisticOptions<TVariables, TData>) {
+  const queryClient = getQueryClient();
+
+  return useMutation<TData, Error, TVariables, { previousData?: any }>({
+    mutationKey,
+    mutationFn: async (variables: TVariables) => {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(variables),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Mutation failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      if (queryKeyToUpdate) {
+        await queryClient.cancelQueries({ queryKey: queryKeyToUpdate });
+      }
+
+      // Snapshot the previous value
+      const previousData = queryKeyToUpdate 
+        ? queryClient.getQueryData(queryKeyToUpdate)
+        : undefined;
+
+      // Optimistically update the cache
+      if (queryKeyToUpdate && getOptimisticData) {
+        const optimisticData = getOptimisticData(variables);
+        queryClient.setQueryData(queryKeyToUpdate, optimisticData);
+      }
+
+      // Call custom onMutate if provided
+      const customContext = onMutate ? await onMutate(variables) : undefined;
+
+      return {
+        previousData,
+        ...customContext,
+      };
+    },
+    onError: (error, variables, context) => {
+      // Rollback to the previous data on error
+      if (queryKeyToUpdate && context?.previousData !== undefined) {
+        queryClient.setQueryData(queryKeyToUpdate, context.previousData);
+      }
+      onError?.(error, variables, context);
+    },
+    onSettled: (data, error, variables, context) => {
+      // Invalidate related queries to trigger refetch
+      for (const key of invalidationKeys) {
+        queryClient.invalidateQueries({ queryKey: key });
+      }
+      onSettled?.(data, error, variables, context);
+    },
+  });
+}
+
+// Helper for create operations
+export function useOptimisticCreate<TVariables, TData = any>(
+  endpoint: string,
+  queryKeyToUpdate: QueryKey,
+  getOptimisticData: (variables: TVariables) => any,
+  invalidationKeys: QueryKey[] = []
+) {
+  return useOptimisticMutation<TVariables, TData>({
+    endpoint,
+    method: 'POST',
+    queryKeyToUpdate,
+    getOptimisticData,
+    invalidationKeys: [queryKeyToUpdate, ...invalidationKeys],
+  });
+}
+
+// Helper for update operations
+export function useOptimisticUpdate<TVariables, TData = any>(
+  endpoint: string,
+  queryKeyToUpdate: QueryKey,
+  getOptimisticData: (variables: TVariables) => any,
+  invalidationKeys: QueryKey[] = []
+) {
+  return useOptimisticMutation<TVariables, TData>({
+    endpoint,
+    method: 'PUT',
+    queryKeyToUpdate,
+    getOptimisticData,
+    invalidationKeys: [queryKeyToUpdate, ...invalidationKeys],
+  });
+}
+
+// Helper for delete operations
+export function useOptimisticDelete<TVariables, TData = any>(
+  endpoint: string,
+  queryKeyToUpdate: QueryKey,
+  getOptimisticData: (variables: TVariables) => any,
+  invalidationKeys: QueryKey[] = []
+) {
+  return useOptimisticMutation<TVariables, TData>({
+    endpoint,
+    method: 'DELETE',
+    queryKeyToUpdate,
+    getOptimisticData,
+    invalidationKeys: [queryKeyToUpdate, ...invalidationKeys],
+  });
+}

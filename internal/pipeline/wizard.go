@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/charmbracelet/huh"
@@ -25,6 +26,10 @@ func runWizard() (*config.ProjectConfig, error) {
 	var profile string
 	var name string
 	var layout string
+
+	// Platform parity feature variables.
+	var offlineStorage, pushNotifications, stateManagement, deepLinking bool
+	var featureFlags string
 
 	profileOptions := huh.NewOptions(
 		"fullstack", "backend", "frontend", "mobile", "ai-fullstack", "custom")
@@ -54,7 +59,7 @@ func runWizard() (*config.ProjectConfig, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown profile: %s", profile)
 	}
-	cfg = *base
+	cfg := base
 
 	// Application types.
 	var web, api, mobile, desktop bool

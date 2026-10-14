@@ -1,0 +1,65 @@
+"""SQLAlchemy models for offline storage synchronization in {% .ProjectName%}.
+Defines the database schema for sync metadata and offline data.
+"""
+
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Boolean, UniqueConstraint
+from sqlalchemy.orm import DeclarativeBase
+
+class Base(DeclarativeBase):
+    pass
+
+
+class SyncMetadata(Base):
+    """Metadata tracking sync state for each entity type."""
+    __tablename__ = 'sync_metadata'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    entity_type = Column(String(100), nullable=False, unique=True, index=True)
+    last_sync_timestamp = Column(Integer, nullable=False, default=0)
+    pending_changes = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<SyncMetadata(entity_type='{self.entity_type}', last_sync={self.last_sync_timestamp})>"
+
+
+class OfflineData(Base):
+    """Store for offline-first entity data."""
+    __tablename__ = 'offline_data'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    entity_type = Column(String(100), nullable=False, index=True)
+    entity_id = Column(String(255), nullable=False, index=True)
+    # Value stored as JSON to support flexible data structures
+    value = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Ensure uniqueness of entity_id per entity_type
+    __table_args__ = (
+        UniqueConstraint('entity_type', 'entity_id', name='_entity_type_id_uc'),
+    )
+    
+    def __repr__(self):
+        return f"<OfflineData(entity_type='{self.entity_type}', entity_id='{self.entity_id}')>"
+
+
+class PendingMutation(Base):
+    """Queue for mutations that need to be synced to server."""
+    __tablename__ = 'pending_mutations'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    entity_type = Column(String(100), nullable=False, index=True)
+    operation = Column(String(20), nullable=False)  # create, update, delete
+    entity_id = Column(String(255), nullable=False, index=True)
+    # Entity data stored as JSON
+    entity_data = Column(JSON, nullable=True)
+    timestamp = Column(Integer, nullable=False)  # When mutation was created
+    retry_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<PendingMutation(id={self.id}, entity_type='{self.entity_type}', operation='{self.operation}')>"

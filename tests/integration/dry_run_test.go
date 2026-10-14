@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 	"github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
 	"github.com/tiagozaccaro/ai-project-starter/internal/templates"
 )
@@ -35,8 +36,8 @@ func TestDryRunFileListAccuracy(t *testing.T) {
 	for _, profile := range profiles() {
 		t.Run(profile, func(t *testing.T) {
 			rc := loadResolved(t, profile+".yaml")
-			renderer := templates.NewRenderer(templates.AssetsFS())
-			planned, err := renderer.PlannedFiles(templates.Catalog(), rc)
+			renderer := templates.NewRenderer(assets.FS)
+			planned, err := renderer.PlannedFiles(templates.TemplateManifests(rc), rc)
 			require.NoError(t, err)
 
 			sort.Strings(planned)
@@ -84,8 +85,8 @@ func TestDryRunInvalidConfigStillValidates(t *testing.T) {
 // platforms (never a Windows backslash).
 func TestDryRunPathSeparator(t *testing.T) {
 	rc := loadResolved(t, "fullstack.yaml")
-	renderer := templates.NewRenderer(templates.AssetsFS())
-	planned, err := renderer.PlannedFiles(templates.Catalog(), rc)
+	renderer := templates.NewRenderer(assets.FS)
+	planned, err := renderer.PlannedFiles(templates.TemplateManifests(rc), rc)
 	require.NoError(t, err)
 	for _, p := range planned {
 		assert.NotContains(t, p, `\`,

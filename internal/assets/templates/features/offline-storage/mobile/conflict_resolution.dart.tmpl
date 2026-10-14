@@ -1,111 +1,73 @@
-import 'dart:convert';
-
-// Conflict resolution strategies for {% .ProjectName%}.
-// Provides multiple strategies for resolving data conflicts
-// between client and server during synchronization.
+import 'package:flutter/foundation.dart';
 
 enum ConflictResolutionStrategy {
   lastWriteWins,
   serverWins,
   clientWins,
-  merge,
   manual
 }
 
-/**
- * Resolve a conflict between client and server data.
- * @param entityId - ID of the entity in conflict
- * @param clientData - Data from the client
- * @param serverData - Data from the server
- * @param strategy - Conflict resolution strategy to use
- * @param mergeFunction - Optional function to merge data (for merge strategy)
- * @param manualResolver - Optional function to resolve manually
- * @returns Resolved data
- */
-dynamic resolveConflict(
+class ConflictResolutionResult {
+  final dynamic resolvedData;
+  final bool requiresManual;
+
+  ConflictResolutionResult({
+    required this.resolvedData,
+    required this.requiresManual,
+  });
+}
+
+ConflictResolutionResult resolveConflict(
   String entityId,
   dynamic clientData,
   dynamic serverData,
-  ConflictResolutionStrategy strategy, {
-    Map<String, dynamic> Function(Map<String, dynamic>, Map<String, dynamic>)? mergeFunction,
-    Future<dynamic> Function(String, dynamic, dynamic)? manualResolver,
-  }) async {
+  ConflictResolutionStrategy strategy,
+) {
   switch (strategy) {
     case ConflictResolutionStrategy.serverWins:
-      return serverData;
-    
+      return ConflictResolutionResult(resolvedData: serverData, requiresManual: false);
     case ConflictResolutionStrategy.clientWins:
-      return clientData;
-    
-    case ConflictResolutionStrategy.merge:
-      if (mergeFunction == null) {
-        throw ArgumentError('Merge function required for MERGE strategy');
-      }
-      return mergeFunction(clientData, serverData);
-    
+      return ConflictResolutionResult(resolvedData: clientData, requiresManual: false);
     case ConflictResolutionStrategy.manual:
-      if (manualResolver == null) {
-        throw ArgumentError('Manual resolver required for MANUAL strategy');
-      }
-      return await manualResolver(entityId, clientData, serverData);
-    
+      return ConflictResolutionResult(resolvedData: null, requiresManual: true);
     case ConflictResolutionStrategy.lastWriteWins:
     default:
-      // Default to server wins for safety
-      // In a more complete implementation, you would compare actual timestamps
-      return serverData;
+      // Compare timestamps for last-write-wins
+      final clientTime = clientData is Map 
+        ? (clientData['updatedAt'] ?? clientData['createdAt'] ?? 0)
+        : 0;
+      final serverTime = serverData is Map 
+        ? (serverData['updatedAt'] ?? serverData['createdAt'] ?? 0)
+        : 0;
+      
+      if (clientTime >= serverTime) {
+        return ConflictResolutionResult(resolvedData: clientData, requiresManual: false);
+      } else {
+        return ConflictResolutionResult(resolvedData: serverData, requiresManual: false);
+      }
   }
 }
 
-/**
- * Resolve conflicts for multiple entities.
- * @param conflicts - List of conflict objects
- * @param strategy - Conflict resolution strategy to use
- * @param mergeFunction - Optional function to merge data (for merge strategy)
- * @param manualResolver - Optional function to resolve manually
- * @returns List of resolved data objects
- */
-Future<List<Map<String, dynamic>>> resolveConflicts(
-  List<Map<String, dynamic>> conflicts,
-  ConflictResolutionStrategy strategy, {
-    Map<String, dynamic> Function(Map<String, dynamic>, Map<String, dynamic>)? mergeFunction,
-    Future<dynamic> Function(String, dynamic, dynamic)? manualResolver,
-  }) async {
-  final resolvedDataList = <Map<String, dynamic>>[];
+bool detectConflict(dynamic clientData, dynamic serverData) {
+  if (clientData == null || serverData == null) return false;
   
-  for (final conflict in conflicts) {
-    final resolvedData = await resolveConflict(
-      conflict['entityId'] as String,
-      conflict['clientData'],
-      conflict['serverData'],
-      strategy,
-      mergeFunction: mergeFunction,
-      manualResolver: manualResolver,
-    );
-    
-    resolvedDataList.add({
-      'entityId': conflict['entityId'],
-      'resolvedData': resolvedData,
-    });
-  }
-  
-  return resolvedDataList;
+  // Simple conflict detection: both have data and they're different
+  return clientData.toString() != serverData.toString();
 }
 
-/**
- * Default merge function that shallow merges maps.
- * Prefers server values when there are conflicts.
- * @param clientData - Client data map
- * @param serverData - Server data map
- * @returns Merged data map
- */
-Map<String, dynamic> defaultMergeFunction(
-    Map<String, dynamic> clientData,
-    Map<String, dynamic> serverData) {
-  if (clientData == null) return serverData;
-  if (serverData == null) return clientData;
-  
-  final merged = Map<String, dynamic>.from(clientData);
-  merged.addAll(serverData); // Server values overwrite client values
-  return merged;
+Map<String, dynamic> createConflictRecord(
+  String entityId,
+  String entityType,
+  dynamic clientData,
+  dynamic serverData,
+) {
+  return {
+    'entityId': entityId,
+    'entityType': entityType,
+    'clientData': clientData,
+    'serverData': serverData,
+    'clientTimestamp': clientData is Map ? (clientData['updatedAt'] ?? clientData['createdAt']) : null,
+    'serverTimestamp': serverData is Map ? (serverData['updatedAt'] ?? serverData['createdAt']) : null,
+    'detectedAt': DateTime.now().millisecondsSinceEpoch,
+  };
 }

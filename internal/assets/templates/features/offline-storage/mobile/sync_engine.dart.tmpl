@@ -2,309 +2,160 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-
-// Sync engine for {% .ProjectName%}.
-// Handles bidirectional synchronization between client and server.
-// Implements change tracking, conflict detection, and sync orchestration.
-
 import 'drift_database.dart';
 
-enum ConflictResolutionStrategy {
-  lastWriteWins,
-  serverWins,
-  clientWins,
-  merge,
-  manual
-}
-
 class SyncEngine {
-  final OfflineDatabase _db;
-  final String _apiBaseUrl;
-  final http.Client _httpClient;
+  final OfflineDatabase database;
+  final String apiBaseUrl;
 
   SyncEngine({
-    required OfflineDatabase db,
-    required String apiBaseUrl,
-    http.Client? httpClient,
-  })  : _db = db,
-        _apiBaseUrl = apiBaseUrl,
-        _httpClient = httpClient ?? http.Client();
+    required this.database,
+    required this.apiBaseUrl,
+  });
 
-  // Entity type this sync engine handles
-  final String entityType;
-
-  SyncEngine.forEntity({
-    required OfflineDatabase db,
-    required String apiBaseUrl,
-    required String entityType,
-    http.Client? httpClient,
-  })  : _db = db,
-        _apiBaseUrl = apiBaseUrl,
-        entityType = entityType,
-        _httpClient = httpClient ?? http.Client();
-
-  Future<SyncMetadata?> _getSyncMetadata() async =>
-      await _db.getSyncMetadata(entityType);
-
-  Future<void> _updateSyncMetadata(SyncMetadata metadata) async =>
-      await _db.saveSyncMetadata(metadata);
-
-  Future<List<PendingMutation>> _getPendingMutations() async =>
-      await _db.getPendingMutationsByEntityType(entityType);
-
-  Future<void> _queueMutation(PendingMutation mutation) async =>
-      await _db.savePendingMutation(mutation);
-
-  Future<void> _removePendingMutation(int id) async =>
-      await _db.deletePendingMutation(id);
-
-  /**
-   * Add a pending mutation to the queue.
-   */
-  Future<void> queueMutation({
-    required String operation, // 'create', 'update', 'delete'
-    required String entityId,
-    required Map<String, dynamic>? entityData,
-  }) async {
-    final mutation = PendingMutation(
-      id: 0, // Will be auto-generated
-      entityType: entityType,
-      operation: operation,
-      entityId: entityId,
-      entityData: json.encode(entityData),
-      timestamp: DateTime.now().millisecondsSinceEpoch,
-      retryCount: 0,
-    );
-
-    await _queueMutation(mutation);
-
-    // Update pending changes count
-    final metadata = await _getSyncMetadata();
-    if (metadata != null) {
-      await _updateSyncMetadata(
-        metadata.copyWith(
-          pendingChanges: metadata.pendingChanges + 1,
-        ),
-      );
-    }
-  }
-
-  /**
-   * Perform a sync operation with the server.
-   */
-  Future<SyncResponse> performSync() async {
+  Future<void> pushMutations(String entityType) async {
     try {
-      // Get current sync metadata
-      final metadata = await _getSyncMetadata();
-      if (metadata == null) {
-        throw Exception('Sync metadata not found');
+      final mutations = await database.getPendingMutationsByEntityType(entityType);
+      if (mutations.isEmpty) return;
+
+      // Convert mutations to JSON
+      final mutationData = mutations.map((m) => {
+        'id': m.id,
+        'entityType': m.entityType,
+        'operation': m.operation,
+        'entityId': m.entityId,
+        'entityData': m.entityData,
+        'timestamp': m.timestamp,
+      }).toList();
+
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl/api/v1/sync/$entityType/push'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'mutations': mutationData}),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Sync push failed: ${response.statusCode}');
       }
 
-      // Get pending mutations
-      final pendingMutations = await _getPendingMutations();
+      final result = jsonDecode(response.body);
+      final conflicts = result['conflicts'] as List<dynamic>? ?? [];
+      final serverTimestamp = result['serverTimestamp'] as int? ?? DateTime.now().millisecondsSinceEpoch;
 
-      List<Map<String, dynamic>> conflicts = [];
+      // Handle conflicts
+      for (final conflict in conflicts) {
+        final strategy = ConflictResolutionStrategy.lastWriteWins; // TODO: Get from config
+        final resolvedData = resolveConflict(
+          conflict['entityId'],
+          conflict['clientData'],
+          conflict['serverData'],
+          strategy,
+        );
 
-      // Push changes to server if there are any
-      if (pendingMutations.isNotEmpty) {
-        final pushResponse = await _pushChanges(pendingMutations);
-        
-        // Handle any conflicts from the push
-        if (pushResponse['conflicts'] != null) {
-          conflicts = List<Map<String, dynamic>>.from(
-            pushResponse['conflicts'] as List
-          );
-          
-          // Resolve conflicts
-          for (final conflict in conflicts) {
-            final resolvedData = _resolveConflict(
-              conflict['entityId'] as String,
-              json.decode(conflict['clientData']),
-              json.decode(conflict['serverData']),
-              ConflictResolutionStrategy.lastWriteWins, // Default strategy
-            );
-            
-            // Save resolved data back to local storage
-            await _db.saveOfflineEntity(
-              OfflineEntity(
-                id: conflict['entityId'] as String,
-                value: resolvedData,
-                createdAt: DateTime.now(),
-                updatedAt: DateTime.now(),
-              ),
-            );
-          }
+        if (resolvedData != null) {
+          // Apply resolved data locally
+          await database.saveOfflineEntity(OfflineEntity(
+            id: conflict['entityId'],
+            value: resolvedData,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ));
+        }
+        // If null, manual resolution needed
+      }
+
+      // Remove successfully synced mutations
+      for (final mutation in mutations) {
+        final hasUnresolvedConflict = conflicts.any((c) => 
+          c['entityId'] == mutation.entityId && c['manualResolutionNeeded'] == true
+        );
+        if (!hasUnresolvedConflict) {
+          await database.deletePendingMutation(mutation.id!);
         }
       }
 
-      // Pull changes from server
-      final pullResponse = await _pullChanges(metadata.lastSyncTimestamp);
-      
-      // Apply pulled changes to local storage
-      for (final entityJson in pullResponse['entities'] as List) {
-        final entityMap = entityJson as Map<String, dynamic>;
-        await _db.saveOfflineEntity(
-          OfflineEntity(
-            id: entityMap['id'] as String,
-            value: entityMap['value'],
-            createdAt: DateTime.parse(entityMap['createdAt']),
-            updatedAt: DateTime.parse(entityMap['updatedAt']),
-          ),
-        );
+      // Update sync metadata
+      final metadata = await database.getSyncMetadata(entityType);
+      if (metadata != null) {
+        metadata.lastSyncTimestamp = serverTimestamp;
+        metadata.pendingChanges = (metadata.pendingChanges - mutations.length + conflicts.length).clamp(0, 999999);
+        await database.saveSyncMetadata(metadata);
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Sync push failed for $entityType: $e');
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> pullChanges(String entityType) async {
+    try {
+      final metadata = await database.getSyncMetadata(entityType);
+      final since = metadata?.lastSyncTimestamp ?? 0;
+
+      final response = await http.get(
+        Uri.parse('$apiBaseUrl/api/v1/sync/$entityType/pull?since=$since'),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Sync pull failed: ${response.statusCode}');
       }
 
-      // Clear processed mutations
-      for (final mutation in pendingMutations) {
-        await _removePendingMutation(mutation.id);
+      final result = jsonDecode(response.body);
+      final entities = result['entities'] as List<dynamic>? ?? [];
+      final serverTimestamp = result['serverTimestamp'] as int? ?? DateTime.now().millisecondsSinceEpoch;
+
+      // Apply pulled entities to local storage
+      for (final entity in entities) {
+        final existing = await database.getOfflineEntity(entity['id'] as String);
+        if (existing != null) {
+          // Check for conflicts
+          final strategy = ConflictResolutionStrategy.lastWriteWins; // TODO: Get from config
+          final resolvedData = resolveConflict(
+            entity['id'],
+            entity['value'],
+            existing.value,
+            strategy,
+          );
+          if (resolvedData != null) {
+            await database.saveOfflineEntity(OfflineEntity(
+              id: entity['id'],
+              value: resolvedData,
+              createdAt: existing.createdAt,
+              updatedAt: DateTime.now(),
+            ));
+          }
+        } else {
+          await database.saveOfflineEntity(OfflineEntity(
+            id: entity['id'],
+            value: entity['value'],
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          ));
+        }
       }
 
       // Update sync metadata
-      await _updateSyncMetadata(
-        metadata.copyWith(
-          lastSyncTimestamp: pullResponse['serverTimestamp'] as int,
-          pendingChanges: 0, // Assuming all pending mutations were processed
-        ),
-      );
+      if (metadata != null) {
+        metadata.lastSyncTimestamp = serverTimestamp;
+        metadata.pendingChanges = entities.length;
+        await database.saveSyncMetadata(metadata);
+      }
 
-      return SyncResponse(
-        success: true,
-        conflicts: conflicts.map((c) => c as Map<String, dynamic>).toList(),
-        serverTimestamp: pullResponse['serverTimestamp'] as int,
-      );
+      return entities;
     } catch (e) {
       if (kDebugMode) {
-        print('Sync failed: $e');
+        print('Sync pull failed for $entityType: $e');
       }
-      return SyncResponse(
-        success: false,
-        conflicts: [],
-        serverTimestamp: DateTime.now().millisecondsSinceEpoch,
-      );
+      rethrow;
     }
   }
 
-  Future<Map<String, dynamic>> _pushChanges(
-      List<PendingMutation> mutations) async {
-    final requestBody = {
-      'entityType': entityType,
-      'mutations': mutations.map((m) => {
-        return {
-          'operation': m.operation,
-          'entityId': m.entityId,
-          'entityData': m.entityData != null 
-              ? json.decode(m.entityData as String) 
-              : null,
-          'timestamp': m.timestamp,
-        };
-      }).toList()
-    };
-
-    final response = await _httpClient.post(
-      Uri.parse('$_apiBaseUrl/sync/$entityType/push'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(requestBody),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to push changes: ${response.statusCode}');
-    }
-
-    return json.decode(response.body) as Map<String, dynamic>;
-  }
-
-  Future<Map<String, dynamic>> _pullChanges(int sinceTimestamp) async {
-    final response = await _httpClient.get(
-      Uri.parse('$_apiBaseUrl/sync/$entityType/pull?since=$sinceTimestamp'),
-      headers: {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to pull changes: ${response.statusCode}');
-    }
-
-    return json.decode(response.body) as Map<String, dynamic>;
-  }
-
-  /**
-   * Resolve a conflict between client and server data.
-   */
-  dynamic _resolveConflict(
-    String entityId,
-    dynamic clientData,
-    dynamic serverData,
-    ConflictResolutionStrategy strategy,
-  ) {
-    switch (strategy) {
-      case ConflictResolutionStrategy.serverWins:
-        return serverData;
-      
-      case ConflictResolutionStrategy.clientWins:
-        return clientData;
-      
-      case ConflictResolutionStrategy.merge:
-        return _mergeData(clientData, serverData);
-      
-      case ConflictResolutionStrategy.manual:
-        // Manual resolution would typically involve UI interaction
-        // For now, we'll default to server wins
-        return serverData;
-      
-      case ConflictResolutionStrategy.lastWriteWins:
-      default:
-        // Default to server wins for safety
-        return serverData;
+  Future<void> syncAll(List<String> entityTypes) async {
+    for (final entityType in entityTypes) {
+      await pushMutations(entityType);
+      await pullChanges(entityType);
     }
   }
-
-  /**
-   * Default merge function that shallow merges maps.
-   * Prefers server values when there are conflicts.
-   */
-  Map<String, dynamic> _mergeData(
-      Map<String, dynamic> clientData,
-      Map<String, dynamic> serverData) {
-    if (clientData == null) return serverData;
-    if (serverData == null) return clientData;
-    
-    final merged = Map<String, dynamic>.from(clientData);
-    merged.addAll(serverData); // Server values overwrite client values
-    return merged;
-  }
-
-  /**
-   * Start automatic sync interval.
-   */
-  StreamSubscription<void> startAutoSync({
-    Duration interval = const Duration(seconds: 30),
-  }) {
-    return Stream.periodic(interval, (count) => true)
-        .asyncMap((_) => performSync())
-        .listen(
-          (response) {
-            if (kDebugMode && !response.success) {
-              print('Sync failed: ${response.conflicts.length} conflicts');
-            }
-          },
-          onError: (error) {
-            if (kDebugMode) {
-              print('Sync error: $error');
-            }
-          },
-        );
-  }
-}
-
-/**
- * Response from a sync operation.
- */
-class SyncResponse {
-  final bool success;
-  final List<Map<String, dynamic>> conflicts;
-  final int serverTimestamp;
-
-  SyncResponse({
-    required this.success,
-    required this.conflicts,
-    required this.serverTimestamp,
-  });
 }

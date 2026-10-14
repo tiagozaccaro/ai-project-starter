@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
 	"github.com/tiagozaccaro/ai-project-starter/internal/config"
 	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
 	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
@@ -53,8 +54,8 @@ func Generate(opts GenerateOptions) error {
 		return ValidationError(err.Error())
 	}
 
-	renderer := templates.NewRenderer(templates.AssetsFS())
-	manifest := templates.Catalog()
+	renderer := templates.NewRenderer(assets.FS)
+	manifest := templates.TemplateManifests(rc)
 
 	// 4. Dry-run: print the planned file tree and exit (FR-007).
 	if opts.DryRun {

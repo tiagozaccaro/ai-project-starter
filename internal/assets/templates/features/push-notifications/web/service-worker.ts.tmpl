@@ -1,0 +1,182 @@
+// Service Worker for {% .ProjectName%} Push Notifications
+// Handles push events and notification clicks for web push
+
+/// <reference lib="webworker" />
+
+const CACHE_NAME = '{% .ProjectName %}-push-v1';
+
+// Install event - cache static assets
+self.addEventListener('install', (event: ExtendableEvent) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll([
+        '/',
+        '/offline.html',
+      ]);
+    })
+  );
+  (self as any).skipWaiting();
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  (self as any).clients.claim();
+});
+
+// Push event - display notification
+self.addEventListener('push', (event: PushEvent) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const options: NotificationOptions = {
+      body: data.body || 'New notification',
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/badge-72.png',
+      vibrate: data.vibrate || [200, 100, 200],
+      data: data.data || {},
+      actions: data.actions || [],
+      requireInteraction: data.requireInteraction || false,
+      silent: data.silent || false,
+      tag: data.tag || 'default',
+      renotify: data.renotify || false,
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || '{% .ProjectName %}', options)
+    );
+  } catch (error) {
+    console.error('Push notification error:', error);
+    
+    // Fallback for malformed data
+    event.waitUntil(
+      self.registration.showNotification('{% .ProjectName %}', {
+        body: event.data.text() || 'New notification',
+        icon: '/icon-192.png',
+      })
+    );
+  }
+});
+
+// Notification click event - handle navigation
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  event.notification.close();
+
+  const data = event.notification.data || {};
+  const action = event.action;
+
+  // Handle action buttons
+  if (action) {
+    handleAction(action, data);
+    return;
+  }
+
+  // Default click behavior - navigate to URL or open app
+  const url = data.url || data.deepLink || '/';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Check if there's already a window open
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // Open new window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
+});
+
+// Notification close event
+self.addEventListener('notificationclose', (event: NotificationEvent) => {
+  const data = event.notification.data || {};
+  console.log('Notification closed:', data.tag);
+  
+  // Track notification dismissal if needed
+  if (data.trackDismissal) {
+    // Send dismissal event to analytics/backend
+    fetch(`${data.apiBaseUrl || ''}/api/v1/push/notification-dismissed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag: data.tag, timestamp: Date.now() }),
+    }).catch(() => {}); // Ignore errors
+  }
+});
+
+// Background sync for offline mutations
+self.addEventListener('sync', (event: SyncEvent) => {
+  if (event.tag === 'sync-offline-mutations') {
+    event.waitUntil(syncOfflineMutations());
+  }
+});
+
+async function syncOfflineMutations(): Promise<void> {
+  // This would integrate with the offline queue to sync pending mutations
+  // when the browser regains connectivity
+  console.log('Background sync triggered for offline mutations');
+  
+  // Implementation would:
+  // 1. Get pending mutations from IndexedDB
+  // 2. Send to server
+  // 3. Handle conflicts
+  // 4. Clear synced mutations
+}
+
+function handleAction(action: string, data: any): void {
+  switch (action) {
+    case 'view':
+      // Navigate to the content
+      if (clients.openWindow && data.url) {
+        clients.openWindow(data.url);
+      }
+      break;
+    case 'dismiss':
+      // Just close the notification (already closed by event.notification.close())
+      break;
+    case 'snooze':
+      // Reschedule notification
+      if (data.snoozeMinutes) {
+        scheduleSnooze(data, data.snoozeMinutes);
+      }
+      break;
+    default:
+      console.log('Unknown action:', action);
+  }
+}
+
+function scheduleSnooze(data: any, minutes: number): void {
+  setTimeout(() => {
+    self.registration.showNotification(data.title || '{% .ProjectName %}', {
+      body: data.body || 'Snoozed notification',
+      icon: data.icon || '/icon-192.png',
+      data: { ...data, snoozed: true },
+      tag: `${data.tag}-snoozed`,
+    });
+  }, minutes * 60 * 1000);
+}
+
+// Message event - communicate with main thread
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    (self as any).skipWaiting();
+  }
+  
+  if (event.data?.type === 'GET_VERSION') {
+    event.ports[0].postMessage({ version: CACHE_NAME });
+  }
+});
+
+export {}; // Make this a module

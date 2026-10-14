@@ -1,0 +1,21 @@
+"""VAPID key management endpoints for {% .ProjectName%}.
+Provides endpoint to retrieve VAPID public key for web push notifications.
+"""
+
+from fastapi import APIRouter, HTTPException
+from app.core.config import get_settings
+
+router = APIRouter(prefix="/push/vapid-keys", tags=["vapid-keys"])
+
+
+@router.get("/public-key")
+async def get_vapid_public_key():
+    """Get the VAPID public key for web push notifications."""
+    settings = get_settings()
+    public_key = settings.vapid_public_key
+    if not public_key:
+        raise HTTPException(
+            status_code=503,
+            detail="VAPID keys not configured. Generate keys with 'vapid --gen' and set VAPID_PUBLIC_KEY in environment."
+        )
+    return {"public_key": public_key}

@@ -1,0 +1,178 @@
+"""Session sync endpoint for {% .ProjectName%}.
+Handles cross-platform session synchronization and logout propagation.
+"""
+
+from fastapi import APIRouter, Request, Response, HTTPException
+from pydantic import BaseModel
+from typing import Optional, List
+import time
+
+from app.core.config import get_settings
+from app.core.security import verify_session_token, blacklist_token
+
+router = APIRouter(prefix="/auth/sync", tags=["auth-sync"])
+
+
+class SyncLogoutRequest(BaseModel):
+    source_platform: str  # "web" or "mobile"
+    session_token: Optional[str] = None  # Optional: specific token to invalidate
+
+
+class SessionStatusResponse(BaseModel):
+    authenticated: bool
+    user: Optional[dict] = None
+    session: Optional[dict] = None
+    platforms: List[str] = []
+
+
+class SyncLogoutResponse(BaseModel):
+    invalidated_sessions: int
+    unregistered_subscriptions: int
+
+
+# In-memory token blacklist (in production, use Redis)
+_token_blacklist: set = set()
+_session_platforms: dict = {}  # session_token -> set of platforms
+
+
+@router.post("/logout", response_model=SyncLogoutResponse)
+async def sync_logout(request: SyncLogoutRequest, http_request: Request, response: Response):
+    """
+    Propagate logout across all platforms.
+    
+    When a user logs out on one platform, this endpoint:
+    1. Invalidates the current session
+    2. Blacklists the session token
+    3. Clears cookies on the requesting platform
+    4. Returns info for the client to clear other platform tokens
+    """
+    settings = get_settings()
+    
+    # Get session token from cookie or request body
+    session_token = request.session_token or http_request.cookies.get("session")
+    
+    invalidated = 0
+    unregistered = 0
+    
+    if session_token:
+        claims = verify_session_token(session_token)
+        if claims:
+            user_id = claims.get("sub")
+            
+            # Blacklist the token
+            _token_blacklist.add(session_token)
+            blacklist_token(session_token)
+            
+            # Track platforms for this session
+            if user_id in _session_platforms:
+                platforms = _session_platforms[user_id]
+                # Don't re-invalidate the source platform
+                platforms.discard(request.source_platform)
+                invalidated = len(platforms)
+                
+                # In a real implementation, we would:
+                # - Clear web cookies (done via response.delete_cookie)
+                # - Invalidate mobile tokens via push notification or next sync
+                # - Unregister push notifications for this user
+                unregistered = 1  # placeholder
+                
+                # Clear platform tracking
+                if not platforms:
+                    del _session_platforms[user_id]
+    
+    # Clear the web session cookie
+    response.delete_cookie("session")
+    response.delete_cookie("refresh_token")
+    
+    return SyncLogoutResponse(
+        invalidated_sessions=max(1, invalidated),  # At least 1 (the current session)
+        unregistered_subscriptions=unregistered,
+    )
+
+
+@router.get("/status", response_model=SessionStatusResponse)
+async def session_status(request: Request):
+    """Get current session status including connected platforms."""
+    session_token = request.cookies.get("session")
+    
+    if not session_token:
+        return SessionStatusResponse(authenticated=False)
+    
+    # Check if token is blacklisted
+    if session_token in _token_blacklist:
+        return SessionStatusResponse(authenticated=False)
+    
+    claims = verify_session_token(session_token)
+    if not claims:
+        return SessionStatusResponse(authenticated=False)
+    
+    user_id = claims.get("sub")
+    platforms = list(_session_platforms.get(user_id, set()))
+    if not platforms:
+        platforms = ["web"]  # Default to current platform
+    
+    return SessionStatusResponse(
+        authenticated=True,
+        user={
+            "id": claims.get("sub"),
+            "email": claims.get("email"),
+            "name": claims.get("name"),
+            "picture": claims.get("picture"),
+        },
+        session={
+            "expires_at": claims.get("exp"),
+            "platforms": platforms,
+        },
+        platforms=platforms,
+    )
+
+
+@router.post("/register-platform")
+async def register_platform(request: Request):
+    """Register a platform for the current session."""
+    session_token = request.cookies.get("session")
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="No active session")
+    
+    if session_token in _token_blacklist:
+        raise HTTPException(status_code=401, detail="Session invalidated")
+    
+    claims = verify_session_token(session_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    user_id = claims.get("sub")
+    body = await request.json()
+    platform = body.get("platform", "unknown")
+    
+    if user_id not in _session_platforms:
+        _session_platforms[user_id] = set()
+    
+    _session_platforms[user_id].add(platform)
+    
+    return {"registered_platforms": list(_session_platforms[user_id])}
+
+
+@router.post("/unregister-platform")
+async def unregister_platform(request: Request):
+    """Unregister a platform for the current session."""
+    session_token = request.cookies.get("session")
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="No active session")
+    
+    claims = verify_session_token(session_token)
+    if not claims:
+        raise HTTPException(status_code=401, detail="Invalid session")
+    
+    user_id = claims.get("sub")
+    body = await request.json()
+    platform = body.get("platform", "unknown")
+    
+    if user_id in _session_platforms:
+        _session_platforms[user_id].discard(platform)
+        if not _session_platforms[user_id]:
+            del _session_platforms[user_id]
+    
+    return {"registered_platforms": list(_session_platforms.get(user_id, set()))}

@@ -1,0 +1,129 @@
+// Query providers for {% .ProjectName%}.
+// Type-safe query providers using Riverpod's FutureProvider and StreamProvider.
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'riverpod_provider.dart';
+
+// Generic query provider for a list of items
+final listQueryProvider = FutureProvider.family<List<dynamic>, String>((ref, endpoint) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.get(
+    Uri.parse('$baseUrl$endpoint'),
+    headers: {'Content-Type': 'application/json'},
+  );
+  
+  if (response.statusCode != 200) {
+    throw Exception('Failed to fetch list from $endpoint: ${response.statusCode}');
+  }
+  
+  final data = jsonDecode(response.body);
+  if (data is List) return data;
+  if (data is Map && data['items'] is List) return data['items'] as List;
+  return [];
+});
+
+// Generic query provider for a single item
+final itemQueryProvider = FutureProvider.family<dynamic, ({String endpoint, String id})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final response = await client.get(
+    Uri.parse('$baseUrl${params.endpoint}/${params.id}'),
+    headers: {'Content-Type': 'application/json'},
+  );
+  
+  if (response.statusCode == 404) return null;
+  if (response.statusCode != 200) {
+    throw Exception('Failed to fetch item: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+// Query provider with parameters (filtering, pagination, etc.)
+final parameterizedQueryProvider = FutureProvider.family<dynamic, ({String endpoint, Map<String, String> params})>((ref, params) async {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  final client = ref.watch(httpClientProvider);
+  
+  final queryParams = params.params.entries.map((e) => '${e.key}=${e.value}').join('&');
+  final url = '$baseUrl${params.endpoint}?$queryParams';
+  
+  final response = await client.get(
+    Uri.parse(url),
+    headers: {'Content-Type': 'application/json'},
+  );
+  
+  if (response.statusCode != 200) {
+    throw Exception('Failed to fetch from ${params.endpoint}: ${response.statusCode}');
+  }
+  
+  return jsonDecode(response.body);
+});
+
+// Stream provider for real-time updates (if WebSocket/SSE is configured)
+/*
+final realtimeQueryProvider = StreamProvider.family<dynamic, String>((ref, endpoint) async* {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  // Implementation would use WebSocket or Server-Sent Events
+  // This is a placeholder for real-time capabilities
+  yield* Stream.periodic(const Duration(seconds: 30), (_) async {
+    final client = ref.watch(httpClientProvider);
+    final response = await client.get(Uri.parse('$baseUrl$endpoint'));
+    return jsonDecode(response.body);
+  }).asyncMap((future) => future);
+});
+*/
+
+// Provider for query configuration
+final queryConfigProvider = Provider<QueryConfig>((ref) {
+  return const QueryConfig(
+    staleTime: Duration(minutes: 1),
+    cacheTime: Duration(minutes: 5),
+    retry: 1,
+    refetchOnResume: true,
+  );
+});
+
+class QueryConfig {
+  final Duration staleTime;
+  final Duration cacheTime;
+  final int retry;
+  final bool refetchOnResume;
+  
+  const QueryConfig({
+    required this.staleTime,
+    required this.cacheTime,
+    required this.retry,
+    required this.refetchOnResume,
+  });
+}
+
+// Extension methods for easier query usage
+extension QueryProviderExtensions on WidgetRef {
+  // Watch a list query
+  AsyncValue<List<dynamic>> watchList(String endpoint) {
+    return watch(listQueryProvider(endpoint));
+  }
+  
+  // Watch a single item query
+  AsyncValue<dynamic> watchItem(String endpoint, String id) {
+    return watch(itemQueryProvider((endpoint: endpoint, id: id)));
+  }
+  
+  // Watch a parameterized query
+  AsyncValue<dynamic> watchParameterized(String endpoint, Map<String, String> params) {
+    return watch(parameterizedQueryProvider((endpoint: endpoint, params: params)));
+  }
+  
+  // Refresh a list query
+  Future<void> refreshList(String endpoint) async {
+    invalidate(listQueryProvider(endpoint));
+  }
+  
+  // Refresh an item query
+  Future<void> refreshItem(String endpoint, String id) async {
+    invalidate(itemQueryProvider((endpoint: endpoint, id: id)));
+  }
+}
