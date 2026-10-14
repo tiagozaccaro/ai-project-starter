@@ -1,0 +1,125 @@
+name: Changelog
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  changelog:
+    name: Update Changelog
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate changelog entry
+        id: changelog
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context } = require('@actions/github');
+            const fs = require('fs');
+
+            const pr = context.payload.pull_request;
+            const commits = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+            });
+
+            // Parse conventional commits
+            const sections = {
+              Added: [],
+              Changed: [],
+              Deprecated: [],
+              Removed: [],
+              Fixed: [],
+              Security: [],
+            };
+
+            const typeMap = {
+              feat: 'Added',
+              fix: 'Fixed',
+              chore: 'Changed',
+              docs: 'Changed',
+              style: 'Changed',
+              refactor: 'Changed',
+              perf: 'Changed',
+              test: 'Changed',
+              build: 'Changed',
+              ci: 'Changed',
+              revert: 'Removed',
+            };
+
+            for (const commit of commits.data) {
+              const message = commit.commit.message.split('\n')[0];
+              const match = message.match(/^(\w+)(?:\(.+\))?:\s(.+)/);
+              if (match) {
+                const [, type, description] = match;
+                const section = typeMap[type] || 'Changed';
+                sections[section].push(`- ${description} (#${pr.number})`);
+              } else {
+                sections.Changed.push(`- ${message} (#${pr.number})`);
+              }
+            }
+
+            // Read existing changelog
+            const changelogPath = 'CHANGELOG.md';
+            let changelog = fs.readFileSync(changelogPath, 'utf8');
+
+            // Build new entry
+            let newEntry = `## [Unreleased]\n\n`;
+            let hasChanges = false;
+
+            for (const [section, items] of Object.entries(sections)) {
+              if (items.length > 0) {
+                newEntry += `### ${section}\n`;
+                newEntry += items.join('\n') + '\n\n';
+                hasChanges = true;
+              }
+            }
+
+            if (!hasChanges) {
+              newEntry += `### Changed\n- ${pr.title} (#${pr.number})\n\n`;
+            }
+
+            // Insert after the first "## [Unreleased]" header
+            const unreleasedIndex = changelog.indexOf('## [Unreleased]');
+            if (unreleasedIndex !== -1) {
+              const nextSectionIndex = changelog.indexOf('## [', unreleasedIndex + 1);
+              if (nextSectionIndex !== -1) {
+                changelog = changelog.slice(0, nextSectionIndex) + newEntry + changelog.slice(nextSectionIndex);
+              } else {
+                changelog = changelog + '\n' + newEntry;
+              }
+            } else {
+              changelog = changelog + '\n' + newEntry;
+            }
+
+            fs.writeFileSync(changelogPath, changelog);
+
+            // Output the new entry for potential use
+            core.setOutput('entry', newEntry.trim());
+
+      - name: Commit changelog update
+        if: steps.changelog.outputs.entry != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for PR #${{ github.event.pull_request.number }}"
+          git push
