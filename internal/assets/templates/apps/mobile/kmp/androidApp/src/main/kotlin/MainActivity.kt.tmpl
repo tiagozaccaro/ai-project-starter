@@ -1,0 +1,96 @@
+package org.example.app
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.lifecycle.lifecycleScope
+import org.insert-koin.android.ext.android.injectViewModel
+
+class MainActivity : AppCompatActivity() {
+    private val viewModel: MainViewModel by injectViewModel()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Setup RecyclerView
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = ItemAdapter()
+
+        // Observe items from ViewModel
+        lifecycleScope.launchWhenStarted {
+            viewModel.items.collect { items ->
+                (recyclerView.adapter as ItemAdapter).updateItems(items)
+            }
+        }
+    }
+}
+
+/**
+ * Simple adapter for displaying items
+ */
+class ItemAdapter : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
+    private var items: List<Item> = emptyList()
+
+    fun updateItems(newItems: List<Item>) {
+        items = newItems
+        notifyDataSetChanged()
+    }
+
+    inner class ItemViewHolder(itemView: android.view.View) :
+        RecyclerView.ViewHolder(itemView) {
+        init {
+            itemView.setOnClickListener {
+                // Handle item click
+            }
+        }
+
+        fun bind(item: Item) {
+            itemView.findViewById<TextView>(R.id.item_title).text = item.title
+            itemView.findViewById<TextView>(R.id.item_description).text = item.description
+        }
+    }
+
+    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ItemViewHolder {
+        val view = android.view.LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_layout, parent, false)
+        return ItemViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ItemViewHolder, position: Int) {
+        holder.bind(items[position])
+    }
+
+    override fun getItemCount(): Int = items.size
+}
+
+/**
+ * ViewModel for managing UI-related data
+ */
+class MainViewModel(private val repository: ItemRepository) : androidx.lifecycle.ViewModel() {
+    val items = androidx.lifecycle.MutableStateFlow<List<Item>>(emptyList())
+
+    init {
+        loadItems()
+    }
+
+    private fun loadItems() {
+        viewModelScope.launch {
+            val items = repository.getItems()
+            this.items.value = items
+        }
+    }
+}
+
+// Factory for ViewModel
+class MainViewModelFactory(private val repository: ItemRepository) :
+    androidx.lifecycle.ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+        return MainViewModel(repository) as T
+    }
+}

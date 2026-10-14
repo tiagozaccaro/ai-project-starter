@@ -1,0 +1,62 @@
+// Deep linking hook for {% .ProjectName%}.
+// Uses Next.js router for handling deep links on web.
+// When enabled on both web and mobile, provides consistent deep linking experience.
+
+import { useRouter } from 'next/router';
+import { useEffect, useCallback } from 'react';
+
+export function useDeepLinking() {
+  const router = useRouter();
+
+  // Initialize deep link handling
+  useEffect(() => {
+    // Check for initial URL state
+    if (router.isReady && router.asPath !== '/') {
+      handleDeepLink(router.asPath);
+    }
+  }, [router.isReady]);
+
+  // Listen for route changes
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      if (url !== '/') {
+        handleDeepLink(url);
+      }
+    };
+    router.events.on('routeChangeComplete', handleRouteChange);
+    return () => router.events.off('routeChangeComplete', handleRouteChange);
+  }, [router.events]);
+
+  const handleDeepLink = useCallback((path: string) => {
+    // Parse the path and handle navigation accordingly
+    const segments = path.split('/').filter(Boolean);
+    
+    if (segments.length === 0) {
+      // Home route
+      return;
+    }
+
+    const [section, id] = segments;
+    
+    switch (section) {
+      case 'dashboard':
+        // Handle dashboard deep link
+        break;
+      case 'profile':
+        // Handle profile deep link
+        break;
+      case 'settings':
+        // Handle settings deep link
+        break;
+      default:
+        console.log('Deep link not recognized:', path);
+    }
+  }, []);
+
+  // Programmatically navigate to a deep link
+  const navigateTo = useCallback((path: string) => {
+    router.push(path);
+  }, [router]);
+
+  return { navigateTo, handleDeepLink };
+}

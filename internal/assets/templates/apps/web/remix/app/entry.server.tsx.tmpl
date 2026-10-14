@@ -1,0 +1,17 @@
+import { remixHandler } from "@remix-run/node";
+import { isBot } from "isbot";
+
+export const requestHandler = async (request, response) => {
+  const method = request.method;
+  const url = new URL(request.url);
+
+  // If the request is from a bot (e.g., search engine crawler),
+  // we can render the page on the server
+  if (isBot(request.headers.get("user-agent") ?? "")) {
+    return remixHandler(request, response);
+  }
+
+  // For non-bot requests, we can still render on the server
+  // or redirect to a client-only entry point if needed
+  return remixHandler(request, response);
+};

@@ -1,0 +1,94 @@
+// Push notifications hook for {% .ProjectName%}.
+// Uses the Web Push API for browser-based notifications
+// with the Web Notifications API as fallback.
+
+export function usePushNotifications() {
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+
+  useEffect(() => {
+    // Check if Push API is supported
+    if (!window.PushManager) {
+      setIsSubscribed(false);
+      return;
+    }
+
+    // Check current permission
+    const checkPermission = async () => {
+      const current = await Notification.permission;
+      setPermission(current);
+      if current === 'granted' {
+        await subscribe();
+      }
+    };
+
+    checkPermission();
+
+    // Listen for permission changes
+    Notification.onPermissionChange().then(({ permission }) => {
+      setPermission(permission);
+      if (permission === 'granted') {
+        subscribe();
+      }
+    });
+  }, []);
+
+  const subscribe = async () => {
+    try {
+      const base =
+        (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+        "http://localhost:8000";
+
+      const registration = await navigator.serviceWorker?.registration;
+      if (!registration) return;
+
+      const sub = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        // VAPID details would come from server config
+      });
+
+      setSubscription(sub);
+      setIsSubscribed(true);
+
+      // Send subscription to backend
+      await fetch(`${base}/api/v1/push/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription }),
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Failed to subscribe for push notifications:", error);
+      setIsSubscribed(false);
+    }
+  };
+
+  const unsubscribe = async () => {
+    try {
+      const base =
+        (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+        "http://localhost:8000";
+
+      const registration = await navigator.serviceWorker?.registration;
+      if (subscription && registration) {
+        await subscription.unsubscribe();
+        await registration.pushManager.unsubscribe();
+
+        await fetch(`${base}/api/v1/push/unsubscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subscription: subscription }),
+          credentials: "include",
+        });
+      }
+
+      setSubscription(null);
+      setIsSubscribed(false);
+    } catch (error) {
+      console.error("Failed to unsubscribe from push notifications:", error);
+    }
+  };
+
+  return { isSubscribed, permission, subscription, subscribe, unsubscribe };
+}

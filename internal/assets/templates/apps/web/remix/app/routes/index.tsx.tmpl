@@ -1,0 +1,35 @@
+import { json, LoaderFunction, ActionFunction } from "@remix-run/node";
+import { useLoaderData, Form } from "@remix-run/react";
+
+export const loader: LoaderFunction = async ({ request }) => {
+  // In a real application, you would fetch data from an API
+  return json({ message: "Hello from Remix!" });
+};
+
+export const action: ActionFunction = async ({ request }) => {
+  const data = await request.formData();
+  // In a real application, you would send data to an API
+  return json({ received: Object.fromEntries(data) });
+};
+
+export default function Index() {
+  const data = useLoaderData<typeof loader>();
+
+  return (
+    <div style={{ padding: "2rem" }}>
+      <h1>Welcome to {% .ProjectName%}</h1>
+      <p>{data.message}</p>
+      
+      <Form method="post">
+        <div>
+          <label>
+            Name: <input type="text" name="name" />
+          </label>
+        </div>
+        <div>
+          <button type="submit">Submit</button>
+        </div>
+      </Form>
+    </div>
+  );
+}

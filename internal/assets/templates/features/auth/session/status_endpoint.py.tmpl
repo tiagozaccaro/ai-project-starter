@@ -1,0 +1,35 @@
+"""Auth session status endpoint for {% .ProjectName%}.
+Returns current session status for the requesting platform.
+"""
+
+from fastapi import APIRouter, Request
+from app.core.security import verify_session_token
+
+router = APIRouter()
+
+
+@router.get("/auth/status")
+async def auth_status(request: Request):
+    """Return current session status for the requesting platform."""
+    session_token = request.cookies.get("session")
+    
+    if not session_token:
+        return {"authenticated": False}
+    
+    from app.core.security import verify_session_token as vs
+    claims = vs(session_token)
+    
+    if not claims:
+        return {"authenticated": False}
+    
+    return {
+        "authenticated": True,
+        "user": {
+            "id": claims.get("sub"),
+            "email": claims.get("email"),
+        },
+        "session": {
+            "expires_at": claims.get("exp"),
+            "platforms": ["web"],  # Will be updated based on platform tracking
+        }
+    }

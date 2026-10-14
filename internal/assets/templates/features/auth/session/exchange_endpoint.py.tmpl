@@ -1,0 +1,62 @@
+"""Auth session exchange endpoint for {% .ProjectName%}.
+Handles token exchange for mobile apps.
+"""
+
+from fastapi import APIRouter, Request, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+
+router = APIRouter()
+
+
+class ExchangeRequest(BaseModel):
+    code: str
+    redirect_uri: str
+
+
+@router.post("/auth/exchange")
+async def exchange_code(request: ExchangeRequest):
+    """Convert Google OAuth authorization code to tokens for mobile apps."""
+    from app.core.config import get_settings
+    from app.core.security import verify_id_token, create_session_token
+    import httpx
+
+    settings = get_settings()
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": request.code,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+                "redirect_uri": request.redirect_uri,
+                "grant_type": "authorization_code",
+            },
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Failed to exchange code")
+
+        tokens = response.json()
+
+    id_token = tokens.get("id_token", "")
+    claims = verify_id_token(id_token, settings.google_client_id)
+    if not claims:
+        raise HTTPException(status_code=400, detail="Invalid ID token")
+
+    session_token = create_session_token(claims)
+
+    return {
+        "access_token": tokens.get("access_token"),
+        "refresh_token": tokens.get("refresh_token"),
+        "expires_in": tokens.get("expires_in"),
+        "token_type": tokens.get("token_type"),
+        "user": {
+            "id": claims.get("sub"),
+            "email": claims.get("email"),
+            "name": claims.get("name"),
+            "picture": claims.get("picture"),
+        },
+        "session_token": session_token,
+    }

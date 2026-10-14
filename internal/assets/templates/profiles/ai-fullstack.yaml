@@ -16,6 +16,10 @@ features:
   dashboard: true
   login: true
   ai: true
+  offlineStorage: true
+  pushNotifications: true
+  stateManagement: true
+  deepLinking: true
   database.migrations: true
   testing: true
   github: true

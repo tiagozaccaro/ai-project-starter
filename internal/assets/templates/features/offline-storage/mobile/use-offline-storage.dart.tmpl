@@ -1,0 +1,107 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:core';
+import 'package:flutter/material.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+
+// Offline storage for {% .ProjectName%}.
+// Uses SQLite (via sqflite) for mobile app data persistence.
+// When enabled on both web and mobile, provides offline-first data persistence.
+
+class OfflineStorage {
+  static Database? _database;
+
+  static Future<Database?> get database async {
+    if (_database != null) return _database;
+    try {
+      String path = join((await getDatabasesPath()), 'offline_storage.db');
+      _database = await openDatabase(path, version: 1, onCreate: _onCreate);
+      return _database;
+    } catch (e) {
+      print('Error opening database: \$e');
+      return null;
+    }
+  }
+
+  static void _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE offline_data (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> save<T>(String key, T data) async {
+    final db = await database;
+    if (db == null) return;
+    
+    final jsonStr = json.encode(data);
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
+    final updatedAt = createdAt;
+    
+    await db.insert(
+      'offline_data',
+      {
+        'id': key,
+        'data': jsonStr,
+        'created_at': createdAt,
+        'updated_at': updatedAt,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<T?> load<T>(String key) async {
+    final db = await database;
+    if (db == null) return null;
+    
+    final results = await db.query(
+      'offline_data',
+      where: 'id = ?',
+      whereArgs: [key],
+    );
+    
+    if (results.isEmpty) return null;
+    
+    final row = results.first;
+    return json.decode(row['data'] as String) as T;
+  }
+
+  Future<List<String>> getKeys() async {
+    final db = await database;
+    if (db == null) return [];
+    
+    final results = await db.query('offline_data', columns: ['id']);
+    return results.map((row) => row['id'] as String).toList();
+  }
+
+  Future<void> remove(String key) async {
+    final db = await database;
+    if (db == null) return;
+    
+    await db.delete(
+      'offline_data',
+      where: 'id = ?',
+      whereArgs: [key],
+    );
+  }
+
+  Future<void> clear() async {
+    final db = await database;
+    if (db == null) return;
+    
+    await db.delete('offline_data');
+  }
+
+  StreamController<T> dataStream<T>() {
+    final controller = StreamController<T>();
+    // In a real implementation, you would set up database listeners
+    // to notify when data changes
+    return controller;
+  }
+}

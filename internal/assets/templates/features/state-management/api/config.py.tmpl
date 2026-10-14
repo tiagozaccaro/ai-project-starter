@@ -1,0 +1,52 @@
+"""State management configuration for {% .ProjectName%}.
+Provides configuration utilities for state management operations.
+"""
+
+from typing import Any, Dict, Optional
+
+# Default state management configuration
+DEFAULT_STATE_CONFIG = {
+    "staleTime": 60000,  # 1 minute
+    "cacheTime": 300000,  # 5 minutes
+    "refetchOnFocus": True,
+    "refetchOnReconnect": True,
+    "retryOnError": True,
+    "maxRetries": 3,
+}
+
+# Error codes for state management
+STATE_ERROR_CODES = {
+    "stale": "data is stale and being refetched",
+    "network": "network error occurred while fetching data",
+    "server": "server returned an error",
+    "client": "client-side error occurred",
+}
+
+def get_config(key: str, default: Any = None) -> Any:
+    """Get state management configuration value.
+    
+    Args:
+        key: The configuration key to look up
+        default: The default value if key is not found
+        
+    Returns:
+        The configuration value or default
+    """
+    return DEFAULT_STATE_CONFIG.get(key, default)
+
+def format_error(code: str, message: str) -> Dict[str, Any]:
+    """Format a state management error response.
+    
+    Args:
+        code: The error code
+        message: The error message
+        
+    Returns:
+        A formatted error dict
+    """
+    return {
+        "error": {
+            "code": code,
+            "message": message,
+        }
+    }

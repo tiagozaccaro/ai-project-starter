@@ -1,0 +1,256 @@
+"""Sync API endpoints for {% .ProjectName%}.
+Handles bidirectional synchronization between clients and server.
+"""
+
+import json
+import logging
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+from flask import Blueprint, request, jsonify, g
+from sqlalchemy.exc import SQLAlchemyError
+
+from ..models import db
+from ..models.offline_sync import SyncMetadata, PendingMutation, OfflineData
+from ..utils.auth import require_auth
+from ..utils.conflict_resolution import resolve_conflict, ConflictResolutionStrategy
+
+# Create blueprint
+sync_bp = Blueprint('sync', __name__, url_prefix='/sync')
+logger = logging.getLogger(__name__)
+
+
+@sync_bp.route('/<entity_type>/push', methods=['POST'])
+@require_auth
+def push_changes(entity_type: str):
+    """Receive pushed changes from client and apply to server database."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        mutations = data.get('mutations', [])
+        if not isinstance(mutations, list):
+            return jsonify({'error': 'Mutations must be a list'}), 400
+        
+        conflicts = []
+        processed_count = 0
+        
+        # Process each mutation
+        for mutation_data in mutations:
+            try:
+                operation = mutation_data.get('operation')
+                entity_id = mutation_data.get('entityId')
+                entity_data = mutation_data.get('entityData')
+                client_timestamp = mutation_data.get('timestamp')
+                
+                if not operation or not entity_id:
+                    continue
+                
+                # Apply mutation based on operation type
+                if operation == 'create':
+                    if entity_data is None:
+                        continue
+                    
+                    # Check if entity already exists (conflict)
+                    existing = OfflineData.query.filter_by(
+                        entity_type=entity_type,
+                        entity_id=entity_id
+                    ).first()
+                    
+                    if existing:
+                        # Conflict - entity already exists
+                        conflict_data = {
+                            'entityId': entity_id,
+                            'clientData': entity_data,
+                            'serverData': {
+                                'value': existing.value,
+                                'createdAt': existing.created_at.isoformat() if existing.created_at else None,
+                                'updatedAt': existing.updated_at.isoformat() if existing.updated_at else None
+                            }
+                        }
+                        conflicts.append(conflict_data)
+                        
+                        # Apply conflict resolution (default to last write wins)
+                        resolved_data = resolve_conflict(
+                            entity_id,
+                            entity_data,
+                            existing.value,
+                            ConflictResolutionStrategy.LAST_WRITE_WINS
+                        )
+                        
+                        # Update existing entity
+                        existing.value = resolved_data
+                        existing.updated_at = datetime.utcnow()
+                    else:
+                        # Create new entity
+                        new_entity = OfflineData(
+                            entity_type=entity_type,
+                            entity_id=entity_id,
+                            value=entity_data
+                        )
+                        db.session.add(new_entity)
+                
+                elif operation == 'update':
+                    if entity_data is None or not entity_id:
+                        continue
+                    
+                    # Find existing entity
+                    existing = OfflineData.query.filter_by(
+                        entity_type=entity_type,
+                        entity_id=entity_id
+                    ).first()
+                    
+                    if not existing:
+                        # Conflict - trying to update non-existent entity
+                        conflict_data = {
+                            'entityId': entity_id,
+                            'clientData': entity_data,
+                            'serverData': None
+                        }
+                        conflicts.append(conflict_data)
+                        
+                        # For missing entities, treat as create
+                        new_entity = OfflineData(
+                            entity_type=entity_type,
+                            entity_id=entity_id,
+                            value=entity_data
+                        )
+                        db.session.add(new_entity)
+                    else:
+                        # Update existing entity
+                        existing.value = entity_data
+                        existing.updated_at = datetime.utcnow()
+                
+                elif operation == 'delete':
+                    if not entity_id:
+                        continue
+                    
+                    # Find existing entity
+                    existing = OfflineData.query.filter_by(
+                        entity_type=entity_type,
+                        entity_id=entity_id
+                    ).first()
+                    
+                    if not existing:
+                        # Conflict - trying to delete non-existent entity
+                        conflict_data = {
+                            'entityId': entity_id,
+                            'clientData': None,
+                            'serverData': None
+                        }
+                        conflicts.append(conflict_data)
+                    else:
+                        # Delete existing entity
+                        db.session.delete(existing)
+                
+                processed_count += 1
+                
+            except Exception as e:
+                logger.error(f"Error processing mutation: {e}")
+                continue
+        
+        # Commit all changes
+        try:
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logger.error(f"Database error during sync push: {e}")
+            return jsonify({'error': 'Database error'}), 500
+        
+        # Update sync metadata for this entity type
+        try:
+            sync_metadata = SyncMetadata.query.filter_by(
+                entity_type=entity_type
+            ).first()
+            
+            if sync_metadata:
+                sync_metadata.last_sync_timestamp = int(datetime.utcnow().timestamp())
+                sync_metadata.pending_changes = 0  # Assuming all processed
+            else:
+                sync_metadata = SyncMetadata(
+                    entity_type=entity_type,
+                    last_sync_timestamp=int(datetime.utcnow().timestamp()),
+                    pending_changes=0
+                )
+                db.session.add(sync_metadata)
+            
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            logger.error(f"Error updating sync metadata: {e}")
+            # Don't fail the whole request for metadata issues
+        
+        return jsonify({
+            'success': True,
+            'processed': processed_count,
+            'conflicts': conflicts,
+            'serverTimestamp': int(datetime.utcnow().timestamp())
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in push_changes: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+@sync_bp.route('/<entity_type>/pull', methods=['GET'])
+@require_auth
+def pull_changes(entity_type: str):
+    """Provide changes to client since last sync."""
+    try:
+        # Get since timestamp from query params
+        since_str = request.args.get('since', '0')
+        try:
+            since_timestamp = int(since_str)
+        except ValueError:
+            since_timestamp = 0
+        
+        # Get sync metadata to determine what to send
+        sync_metadata = SyncMetadata.query.filter_by(
+            entity_type=entity_type
+        ).first()
+        
+        # Get all entities of this type that have been updated since the timestamp
+        query = OfflineData.query.filter_by(entity_type=entity_type)
+        
+        if since_timestamp > 0:
+            query = query.filter(OfflineData.updated_at >= datetime.fromtimestamp(since_timestamp))
+        
+        entities = query.all()
+        
+        # Format entities for response
+        entity_list = []
+        for entity in entities:
+            entity_list.append({
+                'id': entity.entity_id,
+                'value': entity.value,
+                'createdAt': entity.created_at.isoformat() if entity.created_at else None,
+                'updatedAt': entity.updated_at.isoformat() if entity.updated_at else None
+            })
+        
+        # Determine server timestamp for response
+        server_timestamp = int(datetime.utcnow().timestamp())
+        if sync_metadata:
+            # Use the later of metadata timestamp or current time
+            server_timestamp = max(sync_metadata.last_sync_timestamp, server_timestamp)
+        
+        return jsonify({
+            'success': True,
+            'entities': entity_list,
+            'serverTimestamp': server_timestamp
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in pull_changes: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+# Error handlers
+@sync_bp.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+
+@sync_bp.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return jsonify({'error': 'Internal server error'}), 500

@@ -1,0 +1,46 @@
+// Auth session sync logout for {% .ProjectName%}.
+// Handles cross-platform logout propagation between web and mobile.
+// Provider: {% .AuthProvider%}.
+
+export async function syncLogout(sourcePlatform: "web" | "mobile"): Promise<{
+  invalidatedSessions: number;
+  unregisteredSubscriptions: number;
+}> {
+  const base =
+    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+    "http://localhost:8000";
+
+  const res = await fetch(`${base}/api/v1/auth/sync/logout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_platform: sourcePlatform }),
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to sync logout");
+  }
+
+  return res.json();
+}
+
+export async function checkSession(): Promise<{
+  authenticated: boolean;
+  user?: { id: string; email: string };
+  session?: { expiresAt: string; platforms: string[] };
+}> {
+  const base =
+    (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
+    "http://localhost:8000";
+
+  const res = await fetch(`${base}/api/v1/auth/status`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    return { authenticated: false };
+  }
+
+  return res.json();
+}

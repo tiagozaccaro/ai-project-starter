@@ -1,0 +1,33 @@
+package main
+
+import (
+	"{% .ProjectName%}-api/handlers"
+	"log"
+
+	"github.com/gin-gonic/gin"
+)
+
+func main() {
+	router := gin.Default()
+
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
+
+	// API routes
+	api := router.Group("/api")
+	{
+		api.GET("/{% .ProjectName%}", handlers.Get{% .ProjectName%}s)
+		api.POST("/{% .ProjectName%}", handlers.Create{% .ProjectName%})
+		api.GET("/{% .ProjectName%}/:id", handlers.Get{% .ProjectName%})
+		api.PUT("/{% .ProjectName%}/:id", handlers.Update{% .ProjectName%})
+		api.DELETE("/{% .ProjectName%}/:id", handlers.Delete{% .ProjectName%})
+	}
+
+	if err := router.Run(":8080"); err != nil {
+		log.Fatal("Failed to run server: ", err)
+	}
+}

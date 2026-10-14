@@ -1,42 +1,155 @@
 """Observability setup for {% .ProjectName%}.
 
-Configures OpenTelemetry tracing and Sentry error reporting
-when the corresponding environment variables are set.
+Configures OpenTelemetry tracing, metrics, and logging,
+along with Sentry error reporting when environment variables are set.
 """
 
 import logging
 import os
+import sys
 
 logger = logging.getLogger(__name__)
 
 
-def setup_observability() -> None:
-    """Initialize tracing and error reporting."""
+def setup_logging() -> None:
+    """Configure structured logging."""
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    # Reduce noise from external libraries
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    
+    logger.info(f"Logging configured with level: {log_level}")
+
+
+def setup_tracing() -> None:
+    """Initialize OpenTelemetry tracing."""
+    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    
+    if not otlp_endpoint:
+        logger.info("OTEL_EXPORTER_OTLP_ENDPOINT not set; skipping tracing")
+        return
+        
+    try:
+        from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+
+        # Create resource with service information
+        resource = Resource.create({
+            "service.name": "{% .ProjectName%}",
+            "service.version": "0.1.0",
+            "deployment.environment": os.getenv("ENVIRONMENT", "development")
+        })
+
+        # Set up tracer provider
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp_endpoint)))
+        trace.set_tracer_provider(provider)
+        
+        # Instrument FastAPI and SQLAlchemy
+        # Note: Actual instrumentation would happen in the main application file
+        logger.info(f"OpenTelemetry tracing initialized with endpoint: {otlp_endpoint}")
+        
+    except ImportError as e:
+        logger.warning(f"OpenTelemetry packages not installed; skipping tracing: {e}")
+
+
+def setup_metrics() -> None:
+    """Initialize OpenTelemetry metrics."""
+    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    
+    if not otlp_endpoint:
+        logger.info("OTEL_EXPORTER_OTLP_ENDPOINT not set; skipping metrics")
+        return
+        
+    try:
+        from opentelemetry import metrics
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import (
+            PeriodicExportingMetricReader,
+        )
+        from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import (
+            OTLPMetricExporter,
+        )
+
+        # Create resource with service information
+        resource = Resource.create({
+            "service.name": "{% .ProjectName%}",
+            "service.version": "0.1.0",
+            "deployment.environment": os.getenv("ENVIRONMENT", "development")
+        })
+
+        # Set up metric provider
+        exporter = OTLPMetricExporter(endpoint=otlp_endpoint)
+        reader = PeriodicExportingMetricReader(exporter, export_interval_millis=5000)
+        provider = MeterProvider(resource=resource, metric_readers=[reader])
+        metrics.set_meter_provider(provider)
+        
+        logger.info(f"OpenTelemetry metrics initialized with endpoint: {otlp_endpoint}")
+        
+    except ImportError as e:
+        logger.warning(f"OpenTelemetry metrics packages not installed; skipping metrics: {e}")
+
+
+def setup_sentry() -> None:
+    """Initialize Sentry error reporting."""
     dsn = os.getenv("SENTRY_DSN", "")
-    otlp = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "")
+    
+    if not dsn:
+        logger.info("SENTRY_DSN not set; skipping Sentry")
+        return
+        
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-    if dsn:
-        try:
-            import sentry_sdk
+        sentry_logging = LoggingIntegration(
+            level=logging.INFO,        # Capture info and above as breadcrumbs
+            event_level=logging.ERROR  # Send errors as events
+        )
 
-            sentry_sdk.init(dsn=dsn, traces_sample_rate=0.1)
-            logger.info("Sentry initialized")
-        except ImportError:
-            logger.warning("sentry-sdk not installed; skipping Sentry")
+        sentry_sdk.init(
+            dsn=dsn,
+            integrations=[
+                sentry_logging,
+                SqlalchemyIntegration(),
+            ],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            environment=os.getenv("ENVIRONMENT", "development"),
+            release=f"{os.getenv('GIT_COMMIT', 'unknown')}",
+        )
+        
+        logger.info("Sentry initialized")
+        
+    except ImportError as e:
+        logger.warning(f"sentry-sdk not installed; skipping Sentry: {e}")
 
-    if otlp:
-        try:
-            from opentelemetry import trace
-            from opentelemetry.sdk.resources import Resource
-            from opentelemetry.sdk.trace import TracerProvider
-            from opentelemetry.sdk.trace.export import BatchSpanProcessor
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-                OTLPSpanExporter,
-            )
 
-            provider = TracerProvider(resource=Resource.create({"service.name": "{% .ProjectName%}" }))
-            provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=otlp)))
-            trace.set_tracer_provider(provider)
-            logger.info("OpenTelemetry initialized")
-        except ImportError:
-            logger.warning("OpenTelemetry packages not installed; skipping tracing")
+def setup_observability() -> None:
+    """Initialize all observability components."""
+    logger.info("Setting up observability...")
+    
+    setup_logging()
+    setup_tracing()
+    setup_metrics()
+    setup_sentry()
+    
+    logger.info("Observability setup complete")

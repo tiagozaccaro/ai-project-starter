@@ -1,0 +1,108 @@
+"""LaunchDarkly feature flag integration for {% .ProjectName%}.
+Provides easy access to feature flags with caching and error handling.
+"""
+
+import os
+import time
+import logging
+from typing import Any, Dict, Optional
+from functools import lru_cache
+from ldclient import Config
+from ldclient.interfaces import UpdateProcessor
+from ldclient.util import log
+
+logger = logging.getLogger(__name__)
+
+
+class LDUpdateProcessor(UpdateProcessor):
+    """Custom update processor for LaunchDarkly SDK."""
+    
+    def __init__(self):
+        self.initialized = False
+    
+    def update_available(self):
+        self.initialized = True
+    
+    def update_failed(self):
+        pass
+
+
+class FeatureFlagClient:
+    """LaunchDarkly feature flag client wrapper."""
+    
+    def __init__(self):
+        self.sdk_key = os.getenv("LAUNCHDARKLY_SDK_KEY")
+        if not self.sdk_key:
+            logger.warning("LAUNCHDARKLY_SDK_KEY not set; feature flags disabled")
+            self.client = None
+            return
+            
+        try:
+            import ldclient
+            from ldclient.config import Config
+            
+            config = Config(self.sdk_key)
+            config.update_processor = LDUpdateProcessor()
+            
+            self.client = ldclient.get()
+            if not self.client.is_initialized():
+                self.client.start()
+                
+            logger.info("LaunchDarkly client initialized")
+        except ImportError:
+            logger.warning("ldclient-python not installed; feature flags disabled")
+            self.client = None
+        except Exception as e:
+            logger.error(f"Failed to initialize LaunchDarkly client: {e}")
+            self.client = None
+    
+    def is_enabled(self, flag_key: str, default: bool = False, context: Optional[Dict] = None) -> bool:
+        """Check if a feature flag is enabled."""
+        if not self.client:
+            return default
+            
+        try:
+            # In a real implementation, you would create a proper LDContext
+            # For now, we'll use a simple approach
+            return self.client.variation(flag_key, context or {}, default)
+        except Exception as e:
+            logger.error(f"Error evaluating feature flag {flag_key}: {e}")
+            return default
+    
+    def variation(self, flag_key: str, default: Any, context: Optional[Dict] = None) -> Any:
+        """Get the variation value for a feature flag."""
+        if not self.client:
+            return default
+            
+        try:
+            return self.client.variation(flag_key, context or {}, default)
+        except Exception as e:
+            logger.error(f"Error getting variation for feature flag {flag_key}: {e}")
+            return default
+    
+    def close(self):
+        """Close the LaunchDarkly client."""
+        if self.client:
+            self.client.close()
+
+
+# Global instance
+_feature_flag_client = None
+
+
+def get_feature_flag_client() -> FeatureFlagClient:
+    """Get or create the global feature flag client."""
+    global _feature_flag_client
+    if _feature_flag_client is None:
+        _feature_flag_client = FeatureFlagClient()
+    return _feature_flag_client
+
+
+def is_enabled(flag_key: str, default: bool = False, context: Optional[Dict] = None) -> bool:
+    """Check if a feature flag is enabled."""
+    return get_feature_flag_client().is_enabled(flag_key, default, context)
+
+
+def variation(flag_key: str, default: Any, context: Optional[Dict] = None) -> Any:
+    """Get the variation value for a feature flag."""
+    return get_feature_flag_client().variation(flag_key, default, context)

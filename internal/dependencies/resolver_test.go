@@ -162,6 +162,31 @@ func TestResolveCapabilityFlags(t *testing.T) {
 	}
 }
 
+func TestResolvePlatformParityFlags(t *testing.T) {
+	cfg := baseConfig()
+	cfg.Applications.Mobile = true
+	cfg.Features.OfflineStorage = true
+	cfg.Features.PushNotifications = true
+	cfg.Features.StateManagement = true
+	cfg.Features.DeepLinking = true
+	rc, err := NewResolver().Resolve(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !rc.GenerateOfflineStorage {
+		t.Error("expected offlineStorage to be enabled")
+	}
+	if !rc.GeneratePushNotifications {
+		t.Error("expected pushNotifications to be enabled")
+	}
+	if !rc.GenerateStateManagement {
+		t.Error("expected stateManagement to be enabled")
+	}
+	if !rc.GenerateDeepLinking {
+		t.Error("expected deepLinking to be enabled")
+	}
+}
+
 func TestResolvedConfigHelpers(t *testing.T) {
 	rc, err := NewResolver().Resolve(baseConfig())
 	if err != nil {

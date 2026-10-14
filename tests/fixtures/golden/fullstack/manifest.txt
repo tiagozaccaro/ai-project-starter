@@ -35,6 +35,8 @@ ea30583baff8536055742f55c2839686ba8377ff4b54329c377b0875280c6c35  apps/api/app/_
 253f460fad9d8e24953231bf519b8d264ea50364ff837c473b859e81f141ea9d  apps/api/app/api/v1/__init__.py
 c8a98b47040f4cd2488eeb21ef6d472c5f5ee8384faae5d4b5b3278e322ed23e  apps/api/app/api/v1/auth.py
 dec43f99b669953b1e0da677df565346e57d951c5986f50045a957159b7b209c  apps/api/app/api/v1/auth_callback.py
+a69f0540926d53572fee095534ecf14b19a5b6f9db67a3d9ea3dc0e9ff6cde6c  apps/api/app/api/v1/auth_exchange.py
+13ccbf866b3eb189f5180c2c1193ff8bd67b754bcb2d6f35e819f164e26d9182  apps/api/app/api/v1/auth_status.py
 d9440bef746ef9738db05089da74a8b2c832118a55482486bffd5837f7aacd0d  apps/api/app/api/v1/health.py
 eacc38da085f8dc84f269afa42514686a36f8aade96d4e046989b1494ef61d04  apps/api/app/core/__init__.py
 4b2cecde81078e93cfe93fd7ef9d4bd86df501c2fe58adfbb462223c81a15657  apps/api/app/core/config.py

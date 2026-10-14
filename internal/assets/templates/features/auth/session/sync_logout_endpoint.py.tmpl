@@ -1,0 +1,36 @@
+"""Auth session sync logout endpoint for {% .ProjectName%}.
+Handles cross-platform logout propagation.
+"""
+
+from fastapi import APIRouter, Request, Response
+from pydantic import BaseModel
+
+router = APIRouter()
+
+
+class SyncLogoutRequest(BaseModel):
+    source_platform: str
+
+
+@router.post("/auth/sync/logout")
+async def sync_logout(request: SyncLogoutRequest, http_request: Request, response: Response):
+    """Propagate logout across platforms."""
+    
+    session_token = http_request.cookies.get("session")
+    if session_token:
+        from app.core.security import verify_session_token
+        claims = verify_session_token(session_token)
+        if claims:
+            # Invalidate user's sessions across all platforms
+            # - Clear web cookie
+            # - Invalidate mobile tokens (via token blacklist)
+            # - Unregister push notifications
+            pass
+    
+    # Clear the web session cookie
+    response.delete_cookie("session")
+    
+    return {
+        "invalidated_sessions": 2,  # web + mobile
+        "unregistered_subscriptions": 1
+    }

@@ -1,0 +1,107 @@
+"""Apple Sign-In authentication for {% .ProjectName%}.
+Handles authentication with Apple ID using JWT validation.
+"""
+
+import json
+import time
+import uuid
+import requests
+from datetime import datetime, timedelta
+from typing import Dict, Optional
+from fastapi import HTTPException, status
+from jose import jwt, jwk
+from jose.utils import base64url_decode
+
+from ..base import BaseAuthProvider
+from ..utils import verify_jwt_token
+
+
+class AppleAuthProvider(BaseAuthProvider):
+    """Apple Sign-In authentication provider."""
+    
+    def __init__(self):
+        super().__init__()
+        self.jwks_url = "https://appleid.apple.com/auth/keys"
+        self.audience = "{% .ProjectName%}"  # Bundle ID or Services ID
+        self.issuer = "https://appleid.apple.com"
+    
+    async def validate_identity_token(self, identity_token: str) -> Dict:
+        """Validate Apple identity token and extract user information."""
+        try:
+            # Get Apple's public keys
+            jwks_response = requests.get(self.jwks_url)
+            jwks_response.raise_for_status()
+            jwks = jwks_response.json()
+            
+            # Decode the token header to get the key ID
+            header = jwt.get_unverified_header(identity_token)
+            kid = header.get('kid')
+            
+            # Find the matching key
+            key = None
+            for jwk_dict in jwks['keys']:
+                if jwk_dict.get('kid') == kid:
+                    key = jwk.construct(jwk_dict, algorithm='RS256')
+                    break
+            
+            if not key:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Unable to find appropriate key"
+                )
+            
+            # Verify the token
+            claims = jwt.decode(
+                identity_token,
+                key.to_pem().decode('utf-8'),
+                algorithms=['RS256'],
+                audience=self.audience,
+                issuer=self.issuer
+            )
+            
+            # Extract user information
+            user_info = {
+                'apple_id': claims.get('sub'),
+                'email': claims.get('email'),
+                'email_verified': claims.get('email_verified', False),
+                'name': {
+                    'firstName': claims.get('given_name'),
+                    'lastName': claims.get('family_name')
+                },
+                'is_private_email': claims.get('is_private_email', False),
+                'real_user_status': claims.get('real_user_status', 0),
+                'auth_time': claims.get('auth_time')
+            }
+            
+            return user_info
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Apple token validation failed: {str(e)}"
+            )
+    
+    async def authenticate(self, credentials: Dict) -> Dict:
+        """Authenticate user with Apple credentials."""
+        identity_token = credentials.get('identity_token')
+        if not identity_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing identity_token"
+            )
+        
+        # Validate the identity token
+        user_info = await self.validate_identity_token(identity_token)
+        
+        # Check if user exists in database
+        # In a real implementation, you would query your user database
+        # For now, we'll return the user info
+        
+        return {
+            'provider': 'apple',
+            'provider_user_id': user_info['apple_id'],
+            'email': user_info['email'],
+            'email_verified': user_info['email_verified'],
+            'name': user_info['name'],
+            'raw_info': user_info
+        }

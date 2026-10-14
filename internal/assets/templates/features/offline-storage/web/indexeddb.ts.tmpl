@@ -1,0 +1,112 @@
+// IndexedDB wrapper for {% .ProjectName%}.
+// Provides a promise-based interface to IndexedDB using the idb library.
+// Handles database versioning, object stores, and error handling.
+
+import { openDB, IDBPDatabase } from 'idb';
+import { v4 as uuidv4 } from 'uuid';
+
+let dbPromise: Promise<IDBPDatabase> | null = null;
+
+/**
+ * Get or create the IndexedDB database instance.
+ * @returns Promise resolving to the IDBPDatabase instance
+ */
+export function getDB(): Promise<IDBPDatabase> {
+  if (!dbPromise) {
+    dbPromise = openDB('{% .ProjectName%}-offline-db', 1, {
+      upgrade(db) {
+        // Create object stores for different data types
+        db.createObjectStore('entities', { keyPath: 'id' });
+        db.createObjectStore('sync_metadata', { keyPath: 'entityType' });
+        db.createObjectStore('pending_mutations', { 
+          keyPath: 'id',
+          autoIncrement: true 
+        });
+      },
+      blocked() {
+        console.warn('Database blocked - please close all tabs to upgrade');
+      },
+      versionchange() {
+        console.warn('Database version change - please reload');
+      }
+    });
+  }
+  return dbPromise;
+}
+
+/**
+ * Save an entity to the specified object store.
+ * @param storeName - Name of the object store
+ * @param entity - Entity object to save (must have id property)
+ * @returns Promise resolving when the entity is saved
+ */
+export async function saveEntity<T extends { id: string }>(
+  storeName: string,
+  entity: T
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(storeName, 'readwrite');
+  const store = tx.objectStore(storeName);
+  await store.put(entity);
+  await tx.done;
+}
+
+/**
+ * Get an entity from the specified object store by ID.
+ * @param storeName - Name of the object store
+ * @param id - Entity ID
+ * @returns Promise resolving to the entity or undefined if not found
+ */
+export async function getEntityById<T extends { id: string }>(
+  storeName: string,
+  id: string
+): Promise<T | undefined> {
+  const db = await getDB();
+  const tx = db.transaction(storeName, 'readonly');
+  const store = tx.objectStore(storeName);
+  return await store.get(id);
+}
+
+/**
+ * Get all entities from the specified object store.
+ * @param storeName - Name of the object store
+ * @returns Promise resolving to an array of entities
+ */
+export async function getAllEntities<T extends { id: string }>(
+  storeName: string
+): Promise<T[]> {
+  const db = await getDB();
+  const tx = db.transaction(storeName, 'readonly');
+  const store = tx.objectStore(storeName);
+  return await store.getAll();
+}
+
+/**
+ * Delete an entity from the specified object store by ID.
+ * @param storeName - Name of the object store
+ * @param id - Entity ID
+ * @returns Promise resolving when the entity is deleted
+ */
+export async function deleteEntity(
+  storeName: string,
+  id: string
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(storeName, 'readwrite');
+  const store = tx.objectStore(storeName);
+  await store.delete(id);
+  await tx.done;
+}
+
+/**
+ * Clear all entities from the specified object store.
+ * @param storeName - Name of the object store
+ * @returns Promise resolving when the store is cleared
+ */
+export async function clearStore(storeName: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(storeName, 'readwrite');
+  const store = tx.objectStore(storeName);
+  await store.clear();
+  await tx.done;
+}

@@ -1,0 +1,50 @@
+// State management hook for {% .ProjectName%}.
+// Uses React Query for server state and Provider for client state.
+// When enabled on both web and mobile, provides synchronized state across platforms.
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Provider, useStore } from 'react';
+
+export function useStateManagement() {
+  const queryClient = useQueryClient();
+
+  // Fetch data from API
+  const fetchData = useQuery(
+    ['data'],
+    async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/data`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch data');
+      return res.json();
+    },
+    { staleTime: 60 * 1000 }
+  );
+
+  // Mutate data on the server
+  const mutateData = useMutation(
+    async (newData: any) => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newData),
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to mutate data');
+      return res.json();
+    }
+  );
+
+  // Invalidate data on other tabs/windows
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        queryClient.invalidateQuery(['data']);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [queryClient]);
+
+  return { data: fetchData.data, isLoading: fetchData.isLoading, error: fetchData.error, mutateData };
+}

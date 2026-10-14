@@ -202,6 +202,61 @@ func TestValidateMobileDestinationCount(t *testing.T) {
 	}
 }
 
+func TestValidateOfflineStorageRequiresBothPlatforms(t *testing.T) {
+	cfg := validConfig()
+	cfg.Applications.Web = true
+	cfg.Applications.Mobile = false
+	cfg.Features.OfflineStorage = true
+	err := cfg.Validate()
+	if err == nil || !containsCode(err.Errors, "FEATURE_REQUIRES_PLATFORMS") {
+		t.Fatalf("expected FEATURE_REQUIRES_PLATFORMS for offlineStorage, got %v", err)
+	}
+}
+
+func TestValidatePushNotificationsRequiresBothPlatforms(t *testing.T) {
+	cfg := validConfig()
+	cfg.Applications.Web = false
+	cfg.Applications.Mobile = true
+	cfg.Features.PushNotifications = true
+	err := cfg.Validate()
+	if err == nil || !containsCode(err.Errors, "FEATURE_REQUIRES_PLATFORMS") {
+		t.Fatalf("expected FEATURE_REQUIRES_PLATFORMS for pushNotifications, got %v", err)
+	}
+}
+
+func TestValidateStateManagementRequiresBothPlatforms(t *testing.T) {
+	cfg := validConfig()
+	cfg.Applications.Web = true
+	cfg.Applications.Mobile = true
+	cfg.Applications.API = false
+	cfg.Metadata = &MetadataConfig{
+		Mobile: &MobileConfig{
+			BundleID: "com.example.myapp",
+			Destinations: []DestinationConfig{
+				{ID: "a", Label: "A", Icon: "home", Route: "/a"},
+				{ID: "b", Label: "B", Icon: "explore", Route: "/b"},
+				{ID: "c", Label: "C", Icon: "person", Route: "/c"},
+			},
+		},
+	}
+	cfg.Features.StateManagement = true
+	err := cfg.Validate()
+	if err != nil {
+		t.Fatalf("expected valid config with both platforms, got %v", err)
+	}
+}
+
+func TestValidateDeepLinkingRequiresBothPlatforms(t *testing.T) {
+	cfg := validConfig()
+	cfg.Applications.Web = true
+	cfg.Applications.Mobile = false
+	cfg.Features.DeepLinking = true
+	err := cfg.Validate()
+	if err == nil || !containsCode(err.Errors, "FEATURE_REQUIRES_PLATFORMS") {
+		t.Fatalf("expected FEATURE_REQUIRES_PLATFORMS for deepLinking, got %v", err)
+	}
+}
+
 func TestValidationErrorAggregates(t *testing.T) {
 	cfg := validConfig()
 	cfg.SchemaVersion = 99

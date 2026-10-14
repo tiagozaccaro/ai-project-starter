@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Sync Protocol for {% .ProjectName%}",
+  "type": "object",
+  "properties": {
+    "entityType": {
+      "type": "string",
+      "description": "Type of entity being synchronized"
+    },
+    "syncToken": {
+      "type": "string",
+      "description": "Opaque token representing client's sync state"
+    },
+    "serverTimestamp": {
+      "type": "integer",
+      "description": "Timestamp of last server sync"
+    }
+  },
+  "required": ["entityType"]
+}

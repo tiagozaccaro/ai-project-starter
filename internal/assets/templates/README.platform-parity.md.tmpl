@@ -1,0 +1,118 @@
+# Platform Parity: {{ .ProjectName }}
+
+This project implements platform parity between the web (Next.js) and mobile (Flutter) applications
+following the **Platform Parity Contract** from the ai-project-starter generator.
+
+## Enabled Capabilities
+
+| Capability | Web | Mobile | Status |
+|------------|-----|--------|--------|
+| Authentication | ✅ | ✅ | {{ if .GenerateAuth }}Enabled{{ else }}Disabled{{ end }} |
+| Offline Storage | ✅ | ✅ | {{ if .GenerateOfflineStorage }}Enabled{{ else }}Disabled{{ end }} |
+| Push Notifications | ✅ | ✅ | {{ if .GeneratePushNotifications }}Enabled{{ else }}Disabled{{ end }} |
+| State Management | ✅ | ✅ | {{ if .GenerateStateManagement }}Enabled{{ else }}Disabled{{ end }} |
+| Deep Linking | ✅ | ✅ | {{ if .GenerateDeepLinking }}Enabled{{ else }}Disabled{{ end }} |
+
+## Architecture
+
+### Authentication (Session Parity)
+- **Web**: HTTP-only cookies managed by FastAPI
+- **Mobile**: Token exchange via `/auth/exchange` endpoint
+- **Sync**: Cross-platform logout via `/auth/sync/logout`
+- **Status**: Session status via `/auth/status`
+
+### Offline Storage
+- **Web**: IndexedDB (idb library)
+- **Mobile**: SQLite (sqflite)
+- Both platforms share the same data model and sync strategy
+
+### Push Notifications
+- **Web**: Web Push API (VAPID)
+- **Mobile**: Firebase Cloud Messaging (FCM)
+- Both platforms register tokens with the backend
+
+### State Management
+- **Web**: React Query + Provider
+- **Mobile**: Riverpod
+- Both platforms sync state with the same API endpoints
+
+### Deep Linking
+- **Web**: Next.js router
+- **Mobile**: go_router
+- Both platforms handle the same URL patterns
+
+## Environment Variables
+
+### API
+```bash
+# Google OIDC
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+OAUTH_REDIRECT_URI_WEB=https://myapp.com/auth/callback
+OAUTH_REDIRECT_URI_MOBILE=myapp://auth/callback
+
+# Supabase
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+
+# Session
+SESSION_SECRET=...
+SESSION_LIFETIME_HOURS=24
+
+# Push Notifications
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+FCM_SERVER_KEY=...
+```
+
+### Web
+```bash
+NEXT_PUBLIC_API_URL=https://api.myapp.com
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+### Mobile
+```bash
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+API_BASE_URL=https://api.myapp.com
+```
+
+## Development
+
+### Running Both Platforms
+```bash
+# Terminal 1 - API
+cd apps/api && uv run uvicorn app.main:app --reload
+
+# Terminal 2 - Web
+cd apps/web && npm run dev
+
+# Terminal 3 - Mobile (iOS)
+cd apps/mobile && flutter run -d ios
+
+# Terminal 4 - Mobile (Android)
+cd apps/mobile && flutter run -d android
+```
+
+### Testing
+```bash
+# Web tests
+cd apps/web && npm test
+
+# Mobile tests
+cd apps/mobile && flutter test
+
+# API tests
+cd apps/api && pytest
+```
+
+## Deployment
+
+Both platforms are designed to be deployed independently while sharing the same API backend.
+See individual app READMEs for deployment instructions.
+
+---
+
+*Generated with ai-project-starter platform parity features.*

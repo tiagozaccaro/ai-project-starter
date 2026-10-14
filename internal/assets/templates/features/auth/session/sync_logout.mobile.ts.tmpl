@@ -1,0 +1,97 @@
+// Auth session sync logout for mobile - {% .ProjectName%}.
+// Handles cross-platform logout propagation between web and mobile.
+// Provider: {% .AuthProvider%}.
+
+import 'package:http/http.dart' as http;
+import 'dart:dart_async';
+import 'dart:dart_async';  // For AsyncSnapshots
+
+class AuthSyncService {
+  final String baseUrl;
+
+  AuthSyncService({String? baseUrl})
+      : baseUrl = baseUrl ??
+            (const bool.fromEnvironment('dart.vm.product') == false
+                ? 'http://10.0.2.2:8000'
+                : 'https://your-api.com');
+
+  // Sync logout across platforms
+  Future<SyncLogoutResponse> syncLogout({
+    required String sourcePlatform,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('\${baseUrl}/api/v1/auth/sync/logout'),
+        headers: const {'Content-Type': 'application/json'},
+        body: JSON.encode({ 'source_platform': sourcePlatform }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to sync logout');
+      }
+
+      return SyncLogoutResponse.fromJson(
+        JSON.decode(response.body) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      throw Exception('Failed to sync logout: \$e');
+    }
+  }
+
+  // Check session status
+  Future<AuthStatusResponse> checkSession() async {
+    try {
+      final response = await http.get(
+        Uri.parse('\${baseUrl}/api/v1/auth/status'),
+        headers: const {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode != 200) {
+        return AuthStatusResponse(authenticated: false);
+      }
+
+      return AuthStatusResponse.fromJson(
+        JSON.decode(response.body) as Map<String, dynamic>,
+      );
+    } catch (e) {
+      return AuthStatusResponse(authenticated: false);
+    }
+  }
+}
+
+class SyncLogoutResponse {
+  final int invalidatedSessions;
+  final int unregisteredSubscriptions;
+
+  SyncLogoutResponse({
+    required this.invalidatedSessions,
+    required this.unregisteredSubscriptions,
+  });
+
+  factory SyncLogoutResponse.fromJson(Map<String, dynamic> json) {
+    return SyncLogoutResponse(
+      invalidatedSessions: json['invalidated_sessions'] as int,
+      unregisteredSubscriptions: json['unregistered_subscriptions'] as int,
+    );
+  }
+}
+
+class AuthStatusResponse {
+  final bool authenticated;
+  final Map<String, dynamic>? user;
+  final Map<String, dynamic>? session;
+
+  AuthStatusResponse({
+    required this.authenticated,
+    this.user,
+    this.session,
+  });
+
+  factory AuthStatusResponse.fromJson(Map<String, dynamic> json) {
+    return AuthStatusResponse(
+      authenticated: json['authenticated'] as bool,
+      user: json['user'] as Map<String, dynamic>?,
+      session: json['session'] as Map<String, dynamic>?,
+    );
+  }
+}

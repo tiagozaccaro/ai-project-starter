@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Conflict Resolution Strategies for {% .ProjectName%}",
+  "type": "object",
+  "properties": {
+    "strategy": {
+      "type": "string",
+      "enum": ["LAST_WRITE_WINS", "SERVER_WINS", "CLIENT_WINS", "MERGE", "MANUAL"],
+      "description": "Strategy to use for resolving conflicts",
+      "default": "LAST_WRITE_WINS"
+    }
+  },
+  "required": ["strategy"]
+}

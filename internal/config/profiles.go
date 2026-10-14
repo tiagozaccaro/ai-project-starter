@@ -22,21 +22,13 @@ type profilePreset struct {
 
 // profileOrder preserves the historical listing order of the
 // built-in profiles.
-var profileOrder = []string{
-	ProfileFullstack,
-	ProfileBackend,
-	ProfileFrontend,
-	ProfileMobile,
-	ProfileAIFullstack,
-	ProfileCustom,
-}
+var profileOrder = []string{}
 
 // profilePresets is the map of profile name to preset, loaded
 // from the embedded composition manifests under
 // templates/profiles/ (T196). The manifests are the single
 // source of truth for profile defaults.
 var profilePresets = loadProfilePresets()
-
 // profileManifest is the on-disk shape of a profile composition
 // manifest. The embedded ProjectConfig carries the applications,
 // database, and features sections.

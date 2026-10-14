@@ -1,0 +1,54 @@
+plugins {
+    kotlin("multiplatform") version "1.8.0"
+    kotlin("plugin.serialization") version "1.8.0"
+}
+
+group = "org.example"
+version = "1.0"
+
+kotlin {
+    androidTarget {
+        publishLibraryVariant("release")
+        publishLibraryVariant("debug")
+    }
+    iosX64()
+    iosArm64()
+    iosSimulatorArm64()
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlin:kotlin-stdlib-common")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+                implementation("io.insert-koin:koin-core:3.2.2")
+            }
+        }
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("io.mockk:mockk-common:1.13.9")
+            }
+        }
+
+        val androidMain by getting {
+            dependencies {
+                implementation("androidx.core:core-ktx:1.9.0")
+                implementation("androidx.appcompat:appcompat:1.6.1")
+                implementation("com.google.android.material:material:1.8.0")
+            }
+        }
+        val androidTest by getting {
+            dependencies {
+                implementation("junit:junit:4.13.2")
+            }
+        }
+        val iosMain by getting
+        val iosTest by getting
+    }
+}
+
+plugins {
+    // Apply the compose plugin to the Android target only
+    id("com.android.application") version "7.3.0" apply false
+    id("org.jetbrains.kotlin.android") version "1.8.0" apply false
+}
