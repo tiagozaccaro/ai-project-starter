@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
 )
 
 // PostGeneration performs git init and integrity checks.

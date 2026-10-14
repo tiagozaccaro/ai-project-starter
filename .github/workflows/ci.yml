@@ -27,7 +27,7 @@ jobs:
           cache: true
 
       - name: Build
-        run: go build -o ai-project-starter ./cmd/ai-project-starter
+        run: go build -o project-forge ./cmd/project-forge
 
       - name: Vet
         run: go vet ./...

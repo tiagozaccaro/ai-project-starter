@@ -7,13 +7,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
-	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
-	"github.com/tiagozaccaro/ai-project-starter/internal/setup"
-	"github.com/tiagozaccaro/ai-project-starter/internal/summary"
-	"github.com/tiagozaccaro/ai-project-starter/internal/templates"
+	"github.com/tiagozaccaro/project-forge/internal/assets"
+	"github.com/tiagozaccaro/project-forge/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/filesystem"
+	"github.com/tiagozaccaro/project-forge/internal/setup"
+	"github.com/tiagozaccaro/project-forge/internal/summary"
+	"github.com/tiagozaccaro/project-forge/internal/templates"
 )
 
 // GenerateOptions holds the options for the generate command.

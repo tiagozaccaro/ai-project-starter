@@ -1,4 +1,4 @@
-module github.com/tiagozaccaro/ai-project-starter
+module github.com/tiagozaccaro/project-forge
 
 go 1.23.0
 

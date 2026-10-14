@@ -1,11 +1,11 @@
-// Copyright 2023 The ai-project-starter Authors. All rights reserved.
+// Copyright 2023 The project-forge Authors. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
 package templates
 
 import (
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
 )
 
 // TemplateManifest describes a single template to be rendered.
@@ -75,28 +75,28 @@ func featureTemplates() []TemplateManifest {
 		{SourcePath: "templates/apps/web/sveltekit/src/routes/+layout.svelte.tmpl", TargetPath: `{% .WebPath "src/routes/+layout.svelte"%}`, Condition: `{{ and .GenerateWeb .GenerateSvelteKit }}`},
 
 		// API applications
-		{SourcePath: "templates/apps/api/AGENTS.md.tmpl", TargetPath: `{% .APIPath "AGENTS.md"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/alembic.ini.tmpl", TargetPath: `{% .APIPath "alembic.ini"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
+		{SourcePath: "templates/apps/api/AGENTS.md.tmpl", TargetPath: `{% .APIPath "AGENTS.md"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/alembic.ini.tmpl", TargetPath: `{% .APIPath "alembic.ini"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
 		{SourcePath: "templates/apps/api/pyproject.toml.tmpl", TargetPath: `{% .APIPath "pyproject.toml"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/main.py.tmpl", TargetPath: `{% .APIPath "app/main.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/api/v1/__init__.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/api/v1/auth.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/api/v1/health.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/health.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/core/__init__.py.tmpl", TargetPath: `{% .APIPath "app/core/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/core/config.py.tmpl", TargetPath: `{% .APIPath "app/core/config.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/core/security.py.tmpl", TargetPath: `{% .APIPath "app/core/security.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/core/logging.py.tmpl", TargetPath: `{% .APIPath "app/core/logging.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/models/__init__.py.tmpl", TargetPath: `{% .APIPath "app/models/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/models/base.py.tmpl", TargetPath: `{% .APIPath "app/models/base.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/models/user.py.tmpl", TargetPath: `{% .APIPath "app/models/user.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/app/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/alembic/env.py.tmpl", TargetPath: `{% .APIPath "alembic/env.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/alembic/script.py.mako.tmpl", TargetPath: `{% .APIPath "alembic/script.py.mako"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/alembic/versions/001_initial.py.tmpl", TargetPath: `{% .APIPath "alembic/versions/001_initial.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/tests/__init__.py.tmpl", TargetPath: `{% .APIPath "tests/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/tests/conftest.py.tmpl", TargetPath: `{% .APIPath "tests/conftest.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/tests/test_auth.py.tmpl", TargetPath: `{% .APIPath "tests/test_auth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
-		{SourcePath: "templates/apps/api/tests/test_health.py.tmpl", TargetPath: `{% .APIPath "tests/test_health.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI }}`},
+		{SourcePath: "templates/apps/api/app/main.py.tmpl", TargetPath: `{% .APIPath "app/main.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/api/v1/__init__.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/api/v1/auth.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/api/v1/health.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/health.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/core/__init__.py.tmpl", TargetPath: `{% .APIPath "app/core/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/core/config.py.tmpl", TargetPath: `{% .APIPath "app/core/config.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/core/security.py.tmpl", TargetPath: `{% .APIPath "app/core/security.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/core/logging.py.tmpl", TargetPath: `{% .APIPath "app/core/logging.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/models/__init__.py.tmpl", TargetPath: `{% .APIPath "app/models/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/models/base.py.tmpl", TargetPath: `{% .APIPath "app/models/base.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/models/user.py.tmpl", TargetPath: `{% .APIPath "app/models/user.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/app/database.py.tmpl", TargetPath: `{% .APIPath "app/database.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/alembic/env.py.tmpl", TargetPath: `{% .APIPath "alembic/env.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/alembic/script.py.mako.tmpl", TargetPath: `{% .APIPath "alembic/script.py.mako"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/alembic/versions/001_initial.py.tmpl", TargetPath: `{% .APIPath "alembic/versions/001_initial.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/tests/__init__.py.tmpl", TargetPath: `{% .APIPath "tests/__init__.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/tests/conftest.py.tmpl", TargetPath: `{% .APIPath "tests/conftest.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/tests/test_auth.py.tmpl", TargetPath: `{% .APIPath "tests/test_auth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
+		{SourcePath: "templates/apps/api/tests/test_health.py.tmpl", TargetPath: `{% .APIPath "tests/test_health.py"%}`, Condition: `{{ and .GenerateAPI .GenerateFastAPI .GenerateAlembic }}`},
 
 		// .NET API application
 		{SourcePath: "templates/apps/api/dotnet/{% .ProjectName%}.csproj.tmpl", TargetPath: `{% .APIPath "{% .ProjectName%}.csproj"%}`, Condition: `{{ and .GenerateAPI .GenerateDotnet }}`},
@@ -194,6 +194,7 @@ func featureTemplates() []TemplateManifest {
 		{SourcePath: "templates/features/graphs/node-graph.tsx.tmpl", TargetPath: `{% .WebPath "src/components/graphs/node-graph.tsx"%}`, Condition: `{{ and .GenerateWeb .GenerateGraphs }}`},
 		// AI.
 		{SourcePath: "templates/features/ai/agent.py.tmpl", TargetPath: `{% .APIPath "app/ai/agent.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
+		{SourcePath: "templates/features/ai/agent.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/ai.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
 		{SourcePath: "templates/features/ai/gateway.py.tmpl", TargetPath: `{% .APIPath "app/ai/gateway.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
 		{SourcePath: "templates/features/ai/provider.py.tmpl", TargetPath: `{% .APIPath "app/ai/provider.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
 		{SourcePath: "templates/features/ai/tools.py.tmpl", TargetPath: `{% .APIPath "app/ai/tools.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAI }}`},
@@ -229,7 +230,7 @@ func featureTemplates() []TemplateManifest {
 		{SourcePath: "templates/features/mcp/mcp.json.tmpl", TargetPath: `.specify/integrations/mcp.json`, Condition: `{{ .GenerateMCP }}`},
 		// Offline storage.
 		{SourcePath: "templates/features/offline-storage/web/use-offline-storage.ts.tmpl", TargetPath: `{% .WebPath "src/hooks/use-offline-storage.ts"%}`, Condition: `{{ and .GenerateWeb .GenerateOfflineStorage }}`},
-		{SourcePath: "templates/features/offline-storage/mobile/use-offline-storage.dart.tmpl", TargetPath: `{% .MobilePath "lib/offline_storage.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateOfflineStorage }}`},
+		{SourcePath: "templates/features/offline-storage/mobile/drift_database.dart.tmpl", TargetPath: `{% .MobilePath "lib/offline_storage.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateOfflineStorage }}`},
 		// Push notifications.
 		{SourcePath: "templates/features/push-notifications/web/use-push-notifications.ts.tmpl", TargetPath: `{% .WebPath "src/hooks/use-push-notifications.ts"%}`, Condition: `{{ and .GenerateWeb .GeneratePushNotifications }}`},
 		{SourcePath: "templates/features/push-notifications/mobile/fcm_service.dart.tmpl", TargetPath: `{% .MobilePath "lib/services/fcm_service.dart"%}`, Condition: `{{ and .GenerateMobile .GeneratePushNotifications }}`},
@@ -243,6 +244,8 @@ func featureTemplates() []TemplateManifest {
 		// Offline storage API client extensions.
 		{SourcePath: "templates/features/offline-storage/api/database.py.tmpl", TargetPath: `{% .APIPath "app/core/database.py"%}`, Condition: `{{ and .GenerateAPI .GenerateOfflineStorage }}`},
 		{SourcePath: "templates/features/offline-storage/api/sync.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/sync.py"%}`, Condition: `{{ and .GenerateAPI .GenerateOfflineStorage }}`},
+		{SourcePath: "templates/features/offline-storage/api/models/offline_sync.py.tmpl", TargetPath: `{% .APIPath "app/models/offline_sync.py"%}`, Condition: `{{ and .GenerateAPI .GenerateOfflineStorage }}`},
+		{SourcePath: "templates/features/offline-storage/api/utils/conflict_resolution.py.tmpl", TargetPath: `{% .APIPath "app/utils/conflict_resolution.py"%}`, Condition: `{{ and .GenerateAPI .GenerateOfflineStorage }}`},
 		{SourcePath: "templates/features/offline-storage/api/sync_models.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/sync_models.py"%}`, Condition: `{{ and .GenerateAPI .GenerateOfflineStorage }}`},
 		// Push notification API client extensions.
 		{SourcePath: "templates/features/push-notifications/api/security.py.tmpl", TargetPath: `{% .APIPath "app/core/security.py"%}`, Condition: `{{ and .GenerateAPI .GeneratePushNotifications }}`},

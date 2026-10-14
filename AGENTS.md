@@ -1,6 +1,6 @@
-# AGENTS.md — ai-project-starter (Generator)
+# AGENTS.md — project-forge (Generator)
 
-This repository contains the `ai-project-starter` generator itself: a Go CLI that
+This repository contains the `project-forge` generator itself: a Go CLI that
 scaffolds standalone full-stack projects (Next.js web, FastAPI API, Flutter
 mobile) from a validated `project.config.yaml`.
 
@@ -42,7 +42,7 @@ mobile) from a validated `project.config.yaml`.
 
 ## Directory Map
 
-- `cmd/ai-project-starter/` — binary entry point
+- `cmd/project-forge/` — binary entry point
 - `internal/cli/` — cobra commands (generate, validate, migrate-config, list-profiles, list-features, upgrade, completion)
 - `internal/config/` — schema, loader, profiles, migration
 - `internal/dependencies/` — resolver → `ResolvedConfig`

@@ -1,4 +1,4 @@
-// Package cli defines the ai-project-starter command-line
+// Package cli defines the project-forge command-line
 // interface root command.
 package cli
 
@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/cli/commands"
-	"github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
+	"github.com/tiagozaccaro/project-forge/internal/cli/commands"
+	"github.com/tiagozaccaro/project-forge/internal/pipeline"
 )
 
 // Version is the generator version, set at build time.
@@ -23,9 +23,9 @@ var OSExit = os.Exit
 // subcommands registered.
 func NewRootCommand() *cobra.Command {
 	root := &cobra.Command{
-		Use:           "ai-project-starter",
+		Use:           "project-forge",
 		Short:         "Generate consistent, maintainable, AI-friendly project repositories",
-		Long:          "ai-project-starter generates configured software repositories (Next.js, FastAPI, Flutter) from a validated project.config.yaml.",
+		Long:          "project-forge generates configured software repositories (Next.js, FastAPI, Flutter) from a validated project.config.yaml.",
 		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,

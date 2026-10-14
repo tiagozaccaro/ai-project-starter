@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/cli"
+	"github.com/tiagozaccaro/project-forge/internal/cli"
 )
 
 // osExit is the function called when the CLI exits. Defaults to os.Exit

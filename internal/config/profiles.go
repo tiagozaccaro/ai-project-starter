@@ -3,7 +3,7 @@ package config
 import (
 	"io/fs"
 
-	"github.com/tiagozaccaro/ai-project-starter/internal/assets"
+	"github.com/tiagozaccaro/project-forge/internal/assets"
 	"gopkg.in/yaml.v3"
 )
 

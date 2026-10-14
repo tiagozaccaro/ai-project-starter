@@ -1,6 +1,6 @@
-# Research: ai-project-starter
+# Research: project-forge
 
-**Feature**: specs/001-ai-project-starter/spec.md
+**Feature**: specs/001-project-forge/spec.md
 **Date**: 2026-10-12
 
 ---
@@ -25,7 +25,7 @@
 **Packaging**:
 ```go
 // go.mod
-module github.com/your-org/ai-project-starter
+module github.com/your-org/project-forge
 
 go 1.22
 
@@ -95,10 +95,10 @@ func validateCombinations(c *ProjectConfig) error {
 **Rationale**:
 - Go compiles to a single static binary with zero runtime dependencies — natively satisfies FR-030 ("installable via npm, pipx, homebrew, and runnable as a standalone binary").
 - npm wrapper: a minimal `package.json` with an `install` script that downloads the precompiled Go binary for the user's platform. This satisfies spec FR-030 ("installable via npm").
-- Homebrew formula: a simple `formula` that downloads the binary from GitHub Releases — maintained as `Formula/ai-project-starter.rb` in the repo, published to a tap.
-- Binary download: `curl -fsSL https://github.com/your-org/ai-project-starter/releases/latest/download/ai-project-starter-{os}-{arch}.tar.gz | tar xz`
+- Homebrew formula: a simple `formula` that downloads the binary from GitHub Releases — maintained as `Formula/project-forge.rb` in the repo, published to a tap.
+- Binary download: `curl -fsSL https://github.com/your-org/project-forge/releases/latest/download/project-forge-{os}-{arch}.tar.gz | tar xz`
 
-**Build & release**: `go build -o ai-project-starter` produces the static binary. Cross-compiled for macOS (x86_64, ARM64) and Linux (x86_64, ARM64) from a single build. A `release.yml` workflow triggered on tags builds and uploads binaries to GitHub Releases, updates the Homebrew formula, and publishes the npm wrapper.
+**Build & release**: `go build -o project-forge` produces the static binary. Cross-compiled for macOS (x86_64, ARM64) and Linux (x86_64, ARM64) from a single build. A `release.yml` workflow triggered on tags builds and uploads binaries to GitHub Releases, updates the Homebrew formula, and publishes the npm wrapper.
 
 **No optional binary needed**: Go's static binary is the primary distribution target — no PyInstaller workaround required.
 
@@ -361,7 +361,7 @@ apps/mobile/AGENTS.md         # Mobile-specific: Flutter, navigation, testing
 
 ## 15. Template Upgrade Compatibility
 
-**Decision**: Generator version pinned in `project.config.yaml` (`generatorVersion`). Upgrade command: `ai-project-starter upgrade --config project.config.yaml`.
+**Decision**: Generator version pinned in `project.config.yaml` (`generatorVersion`). Upgrade command: `project-forge upgrade --config project.config.yaml`.
 
 **Upgrade process**:
 1. Read current config + generator version

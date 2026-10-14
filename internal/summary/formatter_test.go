@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
-	"github.com/tiagozaccaro/ai-project-starter/internal/dependencies"
+	"github.com/tiagozaccaro/project-forge/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/dependencies"
 )
 
 func testResolved() *dependencies.ResolvedConfig {

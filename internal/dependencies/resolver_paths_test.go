@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/config"
 )
 
 func TestAppDirMonorepo(t *testing.T) {

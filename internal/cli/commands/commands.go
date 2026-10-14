@@ -3,7 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
-	pipeline "github.com/tiagozaccaro/ai-project-starter/internal/pipeline"
+	pipeline "github.com/tiagozaccaro/project-forge/internal/pipeline"
 )
 
 // NewGenerateCommand creates the `generate` command.
@@ -150,7 +150,7 @@ func NewCompletionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish|powershell]",
 		Short: "Generate shell completion scripts",
-		Long: `Generate shell completion scripts for ai-project-starter.
+		Long: `Generate shell completion scripts for project-forge.
 
 Supported shells:
 - bash
@@ -160,17 +160,17 @@ Supported shells:
 
 Examples:
   # Bash
-  ai-project-starter completion bash > ~/.bash_completion.d/ai-project-starter
-  source ~/.bash_completion.d/ai-project-starter
+  project-forge completion bash > ~/.bash_completion.d/project-forge
+  source ~/.bash_completion.d/project-forge
 
   # Zsh
-  ai-project-starter completion zsh > "${fpath[1]}/_ai-project-starter"
+  project-forge completion zsh > "${fpath[1]}/_project-forge"
 
   # Fish
-  ai-project-starter completion fish > ~/.config/fish/completions/ai-project-starter.fish
+  project-forge completion fish > ~/.config/fish/completions/project-forge.fish
 
   # PowerShell
-  ai-project-starter completion powershell > ai-project-starter.ps1
+  project-forge completion powershell > project-forge.ps1
 `,
 		Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 		ValidArgs: []string{"bash", "zsh", "fish", "powershell"},

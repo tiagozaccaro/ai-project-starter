@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tiagozaccaro/ai-project-starter/internal/config"
-	"github.com/tiagozaccaro/ai-project-starter/internal/filesystem"
+	"github.com/tiagozaccaro/project-forge/internal/config"
+	"github.com/tiagozaccaro/project-forge/internal/filesystem"
 )
 
 // captureStdout runs fn with os.Stdout redirected to a
