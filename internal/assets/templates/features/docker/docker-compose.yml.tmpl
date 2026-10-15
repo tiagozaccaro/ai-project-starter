@@ -22,7 +22,7 @@ services:
     networks:
       - backend
     environment:
-      DATABASE_URL: {{ if eq .Database.Type "postgresql" }}postgresql+asyncpg://user:password@db:5432/{% .ProjectName%}{% else if eq .Database.Type "sqlite"%}sqlite+aiosqlite:///./app.db{% else if eq .Database.Type "mysql"%}mysql+aiomysql://user:password@db:3306/{% .ProjectName%}{% else if eq .Database.Type "mongodb"%}mongodb://db:27017/{% .ProjectName%}{% else%}sqlite+aiosqlite:///:memory:{% end%}
+      DATABASE_URL: {% if eq .Database.Type "postgresql" %}postgresql+asyncpg://user:password@db:5432/{% .ProjectName %}{% else if eq .Database.Type "sqlite" %}sqlite+aiosqlite:///./app.db{% else if eq .Database.Type "mysql" %}mysql+aiomysql://user:password@db:3306/{% .ProjectName %}{% else if eq .Database.Type "mongodb" %}mongodb://db:27017/{% .ProjectName %}{% else %}sqlite+aiosqlite:///:memory:{% end %}
     depends_on:
 {% if eq .Database.Type "postgresql"%}
       - db
@@ -30,6 +30,7 @@ services:
       - db
 {% else if eq .Database.Type "mongodb"%}
       - db
+{% end%}
 {% end%}
 {% if eq .Database.Type "postgresql"%}
   db:

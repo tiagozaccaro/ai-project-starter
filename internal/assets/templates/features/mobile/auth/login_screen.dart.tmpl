@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-{{ if eq .AuthProvider "google-oidc" }}
+{% if eq .AuthProvider "google-oidc" %}
 import '../../services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
-{{ end }}
-{{ if eq .AuthProvider "supabase" }}
+{% end %}
+{% if eq .AuthProvider "supabase" %}
 import 'package:supabase_flutter/supabase_flutter.dart';
-{{ end }}
+{% end %}
 
 /// Authentication screen for the generated mobile app.
 ///
@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signIn() async {
     setState(() => _isLoading = true);
     try {
-      {{ if eq .AuthProvider "google-oidc" }}
+      {% if eq .AuthProvider "google-oidc" %}
       final baseUrl = const String.fromEnvironment('API_BASE_URL',
               defaultValue: 'http://10.0.2.2:8000');
       final uri = Uri.parse(
@@ -40,17 +40,17 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         context.go('/');
       }
-      {{ else if eq .AuthProvider "supabase" }}
+      {% else if eq .AuthProvider "supabase" %}
       await Supabase.instance.client.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'com.example.app://login-callback',
       );
-      {{ else }}
+      {% else %}
       await Future<void>.delayed(const Duration(milliseconds: 300));
       if (mounted) {
         context.go('/');
       }
-      {{ end }}
+      {% end %}
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

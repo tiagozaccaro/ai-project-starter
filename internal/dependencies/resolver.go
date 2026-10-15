@@ -80,6 +80,17 @@ type ResolvedConfig struct {
 	// is placed at the project root instead of under apps/<name>/.
 	FlatLayout bool
 
+	// Deployment metadata derived for Kubernetes manifests.
+	// These are not part of ProjectConfig; they default to
+	// sensible values and may be overridden by the user later.
+	ImageName          string
+	ImageTag           string
+	Host               string
+	ServiceType        string
+	IngressAnnotations map[string]string
+	Replicas           int
+	Environment        string
+
 	// Auto-corrections and warnings surfaced in the summary.
 	AutoCorrections []AutoCorrection
 	Warnings        []Warning
@@ -171,6 +182,17 @@ func (r *Resolver) Resolve(cfg *config.ProjectConfig) (*ResolvedConfig, error) {
 
 	// Layout: flat places the single app at the project root.
 	rc.FlatLayout = cfg.Layout == config.LayoutFlat
+
+	// Deployment metadata for Kubernetes manifests. These are
+	// derived from the project name and default to sensible
+	// values; the generated project can override them later.
+	rc.ImageName = cfg.ProjectName
+	rc.ImageTag = "latest"
+	rc.Host = cfg.ProjectName + ".example.com"
+	rc.ServiceType = "ClusterIP"
+	rc.IngressAnnotations = map[string]string{}
+	rc.Replicas = 3
+	rc.Environment = "dev"
 
 	// Warnings for requested-but-unsatisfied optional features.
 	if rc.GenerateLogin && rc.AuthProvider == "" {

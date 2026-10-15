@@ -164,6 +164,9 @@ func featureTemplates() []TemplateManifest {
 		{SourcePath: "templates/features/auth/session/status_endpoint.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth_status.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAuth }}`},
 		{SourcePath: "templates/features/auth/session/sync_logout.mobile.ts.tmpl", TargetPath: `{% .MobilePath "lib/auth/sync-logout.ts"%}`, Condition: `{{ and .GenerateMobile .GenerateAuth }}`},
 
+		// Mobile login screen.
+		{SourcePath: "templates/features/mobile/auth/login_screen.dart.tmpl", TargetPath: `{% .MobilePath "lib/features/auth/login_screen.dart"%}`, Condition: `{{ and .GenerateMobile .GenerateFlutter .GenerateAuth }}`},
+
 		// Auth providers.
 		{SourcePath: "templates/features/auth/google_oidc/middleware.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth_google_oidc_middleware.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAuth }}`},
 		{SourcePath: "templates/features/auth/google_oidc/oauth.py.tmpl", TargetPath: `{% .APIPath "app/api/v1/auth_google_oidc_oauth.py"%}`, Condition: `{{ and .GenerateAPI .GenerateAuth }}`},

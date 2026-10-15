@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {% .ProjectName%}-api
 spec:
-  replicas: {{ .Replicas | default 3 }}
+  replicas: {% .Replicas | default 3 %}
   selector:
     matchLabels:
       app: {% .ProjectName%}-api
@@ -21,7 +21,7 @@ spec:
         - containerPort: 8000
         env:
         - name: ENVIRONMENT
-          value: "{{ .Environment }}"
+          value: "{% .Environment %}"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
@@ -53,7 +53,7 @@ spec:
         command: ["sh", "-c", "alembic upgrade head"]
         env:
         - name: ENVIRONMENT
-          value: "{{ .Environment }}"
+          value: "{% .Environment %}"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
