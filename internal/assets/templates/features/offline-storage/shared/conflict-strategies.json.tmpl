@@ -1,9 +1,9 @@
 {
   "version": "1.0",
-  "default": "{{ .Features.ConflictResolution.default | default \"last-write-wins\" }}",
+  "default": "{% .Features.ConflictResolution.default | default "last-write-wins" %}",
   "entityTypes": {
     {% for entityType, strategy in .Features.ConflictResolution.entityTypes %}
-    "{{entityType}}": "{{strategy}}"{% if not loop.last %},{% endif %}
+    "{entityType}": "{strategy}"{% if not loop.last %},{% endif %}
     {% endfor %}
   }
 }

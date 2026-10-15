@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'navigation_state.dart'
-{{ if eq .AuthProvider "supabase" }}
+import 'navigation_state.dart';
+{% if eq .AuthProvider "supabase" %}
 import 'package:supabase_flutter/supabase_flutter.dart';
-{{ end }}
-{{ if and (eq .AuthProvider "google-oidc") .GenerateAuth }}
-import '../services/auth_service.dart'
-{{ end }}
+{% end %}
+{% if and (eq .AuthProvider "google-oidc") .GenerateAuth %}
+import '../services/auth_service.dart';
+{% end %}
 
 /// Right drawer: profile and settings.
 ///
@@ -41,29 +41,29 @@ class UserDrawer extends StatelessWidget {
               context.go(item.route)
             },
           ),
-        {{ if .GenerateAuth }}
+        {% if .GenerateAuth %}
         const Divider(),
         ListTile(
           leading: const Icon(Icons.logout),
           title: const Text('Log out'),
           onTap: () async {
             state.closeAll()
-            {{ if eq .AuthProvider "supabase" }}
+            {% if eq .AuthProvider "supabase" %}
             await Supabase.instance.client.auth.signOut()
-            {{ else if eq .AuthProvider "google-oidc" }}
+            {% else if eq .AuthProvider "google-oidc" %}
             try {
               final authService = AuthService()
               await authService.logout()
             } catch (e) {
               // ignore
             }
-            {{ end }}
+            {% end %}
             if (context.mounted) {
               context.go('/login')
             }
           },
         ),
-        {{ end }}
+        {% end %}
       ],
     )
   }

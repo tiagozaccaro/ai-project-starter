@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {% .ProjectName%}-api
 spec:
-  type: {{ .ServiceType | default "ClusterIP" }}
+  type: {% .ServiceType | default "ClusterIP" %}
   ports:
   - port: 80
     targetPort: 8000

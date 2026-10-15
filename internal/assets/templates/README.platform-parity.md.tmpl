@@ -1,4 +1,4 @@
-# Platform Parity: {{ .ProjectName }}
+# Platform Parity: {% .ProjectName %}
 
 This project implements platform parity between the web (Next.js) and mobile (Flutter) applications
 following the **Platform Parity Contract** from the ai-project-starter generator.
@@ -7,11 +7,11 @@ following the **Platform Parity Contract** from the ai-project-starter generator
 
 | Capability | Web | Mobile | Status |
 |------------|-----|--------|--------|
-| Authentication | ✅ | ✅ | {{ if .GenerateAuth }}Enabled{{ else }}Disabled{{ end }} |
-| Offline Storage | ✅ | ✅ | {{ if .GenerateOfflineStorage }}Enabled{{ else }}Disabled{{ end }} |
-| Push Notifications | ✅ | ✅ | {{ if .GeneratePushNotifications }}Enabled{{ else }}Disabled{{ end }} |
-| State Management | ✅ | ✅ | {{ if .GenerateStateManagement }}Enabled{{ else }}Disabled{{ end }} |
-| Deep Linking | ✅ | ✅ | {{ if .GenerateDeepLinking }}Enabled{{ else }}Disabled{{ end }} |
+| Authentication | ✅ | ✅ | {% if .GenerateAuth %}Enabled{% else %}Disabled{% end %} |
+| Offline Storage | ✅ | ✅ | {% if .GenerateOfflineStorage %}Enabled{% else %}Disabled{% end %} |
+| Push Notifications | ✅ | ✅ | {% if .GeneratePushNotifications %}Enabled{% else %}Disabled{% end %} |
+| State Management | ✅ | ✅ | {% if .GenerateStateManagement %}Enabled{% else %}Disabled{% end %} |
+| Deep Linking | ✅ | ✅ | {% if .GenerateDeepLinking %}Enabled{% else %}Disabled{% end %} |
 
 ## Architecture
 

@@ -21,6 +21,9 @@ func Funcs() template.FuncMap {
 		"upper":           strings.ToUpper,
 		"lower":           strings.ToLower,
 		"title":           title,
+		"default":         defaultFunc,
+		"toYaml":          toYaml,
+		"nindent":         nindent,
 	}
 }
 
@@ -130,4 +133,32 @@ func title(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// default returns the default value if the given value is zero/empty.
+func defaultFunc(def interface{}, v interface{}) interface{} {
+	switch val := v.(type) {
+	case string:
+		if val == "" {
+			return def
+		}
+		return v
+	case nil:
+		return def
+	default:
+		// Check if it's a zero value conceptually
+		if v == nil {
+			return def
+		}
+		return v
+	}
+}
+
+// toYaml is a placeholder - just marshal as empty for now
+func toYaml(v interface{}) string {
+	return ""
+}
+
+func nindent(n int, s string) string {
+	return s
 }

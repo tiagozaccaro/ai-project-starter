@@ -60,6 +60,7 @@ func runWizard() (*config.ProjectConfig, error) {
 		return nil, fmt.Errorf("unknown profile: %s", profile)
 	}
 	cfg := base
+	cfg.ProjectName = name
 
 	// Application types.
 	var web, api, mobile, desktop bool
@@ -146,6 +147,21 @@ func runWizard() (*config.ProjectConfig, error) {
 			return nil, CancelledError("configuration cancelled")
 		}
 		cfg.DesktopFramework = desktopFramework
+	}
+
+	
+	// Mobile metadata (if mobile enabled)
+	if mobile {
+		cfg.Metadata = &config.MetadataConfig{
+			Mobile: &config.MobileConfig{
+				BundleID: "com.example.myapp",
+				Destinations: []config.DestinationConfig{
+					{ID: "home", Label: "Home", Icon: "home", Route: "/home"},
+					{ID: "search", Label: "Search", Icon: "search", Route: "/search"},
+					{ID: "profile", Label: "Profile", Icon: "person", Route: "/profile"},
+				},
+			},
+		}
 	}
 
 	// Database.
